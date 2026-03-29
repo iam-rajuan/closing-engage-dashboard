@@ -1,0 +1,28 @@
+Add New User
+Create a new user account
+User Type Selection
+Title Company
+Notary
+Company Name
+Business Email
+e.g. Acme Title Co.
+contact@company.com
+Phone
+Contact Person Name
++1 (555) 000-0000
+Full name
+Address
+Street address, City, State, ZIP
+Contact Email
+person@company.com
+Account Setup
+User Name
+Confirm Password
+""""""""
+Send invitation email to this user
+User Status
+Set initial account state
+Active
+Inactive
+Cancel
+Create User

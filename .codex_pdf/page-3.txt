@@ -1,0 +1,67 @@
+Search orders, notaries, or documents...
+Alex Sterling
+Admin
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+Users Management
+Manage title companies and notaries within Closing Engage.
+Title Companies€
+Notaries€
+24
+142
+Total Companies
+24
+Filter by name, ID or city...
++12% vs last mo
+Active Notaries
+152
+Global coverage for Closing Engage
+All Status
+Sort by: Newest
+Add User
+Company Name
+HS
+Horizon
+Settlements
+BA
+Blue Anchor LLC
+ST
+Summit Title
+ET
+Elite Trust
+Contact Person
+Contact Details
+jane.smith@summittitle.
+com
+(555) 123-4567
+r.chen@blueanchor.io
+(555) 987-6543
+awaller@elitetrust.com
+(555) 444-3322
+m.scott@horizonsettle.com
+(555) 888-9900
+Status
+Jane Smith
+Robert Chen
+Amanda Waller
+Michael Scott
+Pending
+Inactive
+Active
+Active
+Created Date
+Feb 28, 2026
+Feb 28, 2026
+Feb 28, 2026
+Feb 28, 2026
+Actions
+Showing 1 to 4 of 24 companies
+1
+2
+3
+...
+6

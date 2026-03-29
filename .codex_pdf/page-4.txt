@@ -1,0 +1,63 @@
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+Search orders, notaries, or documents...
+Title Companies
+Northway Holdings
+Northway Holdings
+Northway Holdings
+ACTIVE
+Full-service Title & Escrow Partner
+Primary Contact
+Contact Information
+Sarah J. Miller
+sarah.m@northway.com
++1 (555) 012-3456
+Senior Escrow Officer
+Office Address
+123 Executive Way, Suite 400,
+Austin, TX 78701
+Team Members
+Name
+SM
+Recent Orders
+Order ID
+#ORD-90212
+#ORD-90208
+#ORD-88421
+Manage Team
+Role
+Senior Escrow Officer
+Sarah J. Miller
+sarah.m@northway.com
+Marcus Chen
+m.chen@northway.com
+Director of Operations
+MC
+Elena Rodriguez
+elena.r@northway.com
+Founder
+ER
+Alex Sterling
+Admin
+Edit Company
+Deactivate
+Delete
+Total Orders
+248
+Active Orders
+12
+Completed Orders
+236
+View All
+Date
+Mar 20, 2026
+Mar 15, 2026
+Feb 24, 2026
+Status
+IN PROGRESS
+APPROVED
+COMPLETED

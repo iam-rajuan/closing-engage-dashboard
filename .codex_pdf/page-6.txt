@@ -1,0 +1,50 @@
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+Search orders, notaries, or documents...
+Notaries
+Notary Profile
+Jane Simmons
+Email Address
+Phone Number
+jane.simmons@example.com
+(555) 123-4567
+Notary License
+Location Base
+#NY-88210-24
+New York, NY
+Active
+Assigned Orders
+Order ID
+#ORD-90212
+#ORD-90208
+#ORD-88421
+Status
+In Progress
+Approved
+Completed
+View All Orders
+Action
+Date
+Oct 24, 2023
+Oct 22, 2023
+Oct 18, 2023
+Alex Sterling
+Admin
+Edit
+Verify Notary
+Actions
+Professional Credentials
+Commission Expiry
+Oct 24, 2026
+Service Area
+Greater New York Area
+(Manhattan, Brooklyn, Queens)
+Upload Activity
+Commission_Certificate.pdf
+Uploaded Sep 12, 2023
+Background_Check_2023.pdf
+Uploaded Aug 15, 2023

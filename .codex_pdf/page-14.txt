@@ -1,0 +1,81 @@
+Search orders, notaries, or documents...
+Alex Sterling
+Admin
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+Analytics
+Track system performance and insights
+2,482
+Total Orders
+Orders by Status
++12%
+1,845
+Completed
+485
+Pending Orders
+Orders Trend
+124
+Active Notaries
+Today
+Last 7 days
+Last 30 days
+Custom range
+86
+Title Companies
+Last 30 Days
+Week 1
+Week 2
+Week 3
+Week 4
+Mon
+Tue
+Wed
+Thu
+Fri
+Sat
+Sun
+Notary Performance
+Name
+SC
+Sarah Connor
+MK
+Michael K.
+RW
+Rebecca White
+Completed
+142
+128
+94
+View All
+Success Rate
+98.5%
+94.8%
+96.2%
+Title Company Activity
+First American Title
+Enterprise Client
+Old Republic Title
+Active Partner
+Stewart Title
+Regional Lead
+Full List
+412
+Orders
+389
+Orders
+276
+Orders
+File Upload Performance
+Comprehensive tracking of system-wide document processing and
+automated compliance checks.
+Total Uploads
+12.4k
+Pending Approval
+1.2k
+Approval Rate
+94.2%
+Export Report

@@ -1,0 +1,27 @@
+Add Notary
+Create a new notary account
+Personal Information
+Full Name
+Email Address
+e.g. Jane Doe
+jane.doe@example.com
+Phone Number
++1 (555) 000-0000
+Professional Details
+License Number
+Commission Expiry Date
+mm/dd/yyyy
+LIC-99882211
+Service Area / Location
+City, State or County
+Account Setup
+User Name
+Confirm Password
+""""""""
+Send invitation email to this user
+Status
+Active / Inactive
+Verify Notary
+Credentials Check
+Cancel
+Create User

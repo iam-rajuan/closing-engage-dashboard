@@ -1,0 +1,46 @@
+Search orders, notaries, or documents...
+Alex Sterling
+Admin
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+Personal Information
+Full Name
+Email Address
+Alex Thompson
+alex.t@estateflux.com
+Phone Number
++1 (555) 902-4412
+Company Information
+Company Name
+Company Email
+Estate Flux Title
+ops@estateflux.com
+Contact Number
+Business Address
++1 (555) 200-1100
+782 Commerce Blvd, Austin TX
+Alex Thompson
+alex.t@estateflux.com
+Estate Flux Title
+Security Settings
+Current Password
+""""""""
+New Password
+""""""""
+Confirm New Password
+""""""""
+Update Password
+Notification Preferences
+Email Notifications
+Receive global summary emails
+Edit Profile
+Order Updates
+Real-time alerts for escrow changes
+Document Updates
+Alerts when new documents are signed
+Cancel
+Save Changes

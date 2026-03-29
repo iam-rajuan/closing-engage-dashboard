@@ -1,0 +1,63 @@
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+Search orders, notaries, or documents...
+Documents
+Manage and access all uploaded files within the transaction pipeline.
+File Type: All
+Search by file name or order ID
+File Name
+Closing_Disclosure_Fina&
+Order ID
+#ORD-882190
+Uploaded By
+Title Company
+#ORD-991022
+Wire_Instructions_A-B.pdf
+Notary
+#ORD-771234
+Insurance_Binder_Proof.&
+Buyer
+#ORD-881552
+Title_Search_Report.pdf
+Title Company
+Showing 1 to 10 of 124 results
+Total Files
+2,482
++12% this month
+Needs Approval
+48
+Action required
+Uploaded By: All
+Date
+Oct 24, 2023
+Oct 23, 2023
+Oct 22, 2023
+Oct 20, 2023
+Alex Sterling
+Admin
+Status: All
+Date Range
+Size
+1.2 MB
+Status
+Approved
+Actions
+450 KB
+Pending
+2.4 MB
+Rejected
+3.1 MB
+Approved
+Previous
+1
+2
+3
+...
+13
+Next
+Storage Health
+62%

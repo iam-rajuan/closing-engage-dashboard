@@ -1,0 +1,18 @@
+Assign Notary
+Select a notary for this order
+Order ID
+Location
+#ORD-90212
+123 Maple St, Austin, TX
+Search by name or location...
+Sarah Jenkins
+Austin, TX "  4.9 Rating
+Active
+Marcus Thorne
+Round Rock, TX "  4.7 Rating
+Verified
+Elena Rodriguez
+Cedar Park, TX "  5.0 Rating
+Active
+Assign Notary
+Cancel

@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 1280px;
+  background: #f7f8ff;
+  color: #1f2937;
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-xl border border-line bg-white shadow-sm;
+  }
+
+  .input-base {
+    @apply h-11 w-full rounded-lg border border-line bg-[#F4F7FC] px-4 text-[14px] text-slate-700 outline-none placeholder:text-slate-400;
+  }
+
+  .table-head {
+    @apply bg-[#EEF3FA] text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500;
+  }
+}

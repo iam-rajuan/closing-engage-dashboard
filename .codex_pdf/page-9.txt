@@ -1,0 +1,70 @@
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+Search orders, notaries, or documents...
+Orders Management
+Manage and track all closing orders across your portfolio.
+Quick Filters
+All Orders
+Received
+Assigned
+Under Review
+Approved
+Completed
+Property
+Location
+Order ID
+#ORD-
+90212
+#ORD-
+90208
+#ORD-
+88421
+Title Company
+Northway
+Holdings
+NH
+Assigned Notary
+Jane
+Simmons
+123 Maple St
+Austin, TX
+456 Oak Ave
+Dallas, TX
+AT
+Acme Title Co.
+Unassigned
+789 Pine Rd
+Houston, TX
+CE
+Capital Escrow
+Mark Evans
+Showing 1 to 10 of 248 orders
+Date
+Oct 24,
+2023
+Oct 22,
+2023
+Oct 18,
+2023
+Alex Sterling
+Admin
+Create Order
+Reset All
+Time Period
+Last 30 Days
+Status
+Actions
+Assigned
+Received
+Completed
+Previous
+1
+2
+3
+...
+25
+Next

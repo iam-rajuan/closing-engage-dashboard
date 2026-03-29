@@ -1,0 +1,46 @@
+Search orders, notaries, or documents...
+Alex Sterling
+Admin
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+System Overview
+Real-time performance metrics for Closing Engage ecosystem.
++12%
+Total Title Companies
+142
+Total Notaries
+1,208
++4%
+Total Orders
+8,492
+Orders Pending
+Approval
+28
+Alert
+Completed Orders
+7,814
+92%
+Export Report
+Active Users Trend
+Daily unique engagement across the portal
+Last 30 days  
+Quick Actions
+Frequent administrative tasks
+Peak: 1,240
+Add User
+Create new internal or partner
+accounts
+Assign Orders
+Route pending files to available
+notaries
+Approve Documents
+Verify and sign-off on 28 pending
+items
+Week 1
+Week 2
+Week 3
+Week 4

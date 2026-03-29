@@ -1,0 +1,50 @@
+Dashboard
+Users Management
+Orders Management
+Documents
+Analytics
+Settings
+Order Information
+Title Company
+Signing Date & Time
+Grand Peak Title
+Oct 24, 2024 at 2:00 PM
+Property Address
+452 Pine St, San Francisco, CA 94104
+Received
+Search orders, notaries, or documents...
+#ORD-78241
+Under Review
+Order created on Oct 20, 2024
+Assigned
+Under Review
+Notary Scanbacks
+1 New
+Scanback_V1.pdf
+Uploaded on Oct 24, 2024 at 4:15 PM
+Preview File
+Reject
+Approved
+Change Status
+Approve
+Alex Sterling
+Admin
+Assign Notary
+Completed
+Title Documents
+Special Instructions
+Please ensure all signatures are in blue ink. Borrower requires a physical copy of the
+closing disclosure. Verify ID against provided scanbacks meticulously.
+Closing_Package.pdf
+4.2 MB " Uploaded 2h ago
+Add Documents
+Activity Log
+Order created by System
+Oct 20, 2024 " 09:45 AM
+Notary John Doe assigned
+Oct 21, 2024 " 02:20 PM
+Documents uploaded by John Doe
+Oct 24, 2024 " 04:15 PM
+View Full Audit Trail
+Instructions_Sheet.pdf
+1.1 MB " Uploaded 2h ago
