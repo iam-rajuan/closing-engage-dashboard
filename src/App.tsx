@@ -78,8 +78,8 @@ export default function App() {
       />
       <TopNavbar />
       <main className="ml-[176px] pt-[50px]">
-        <div className="px-6 py-6">
-          <div className="mx-auto max-w-[1200px]">
+        <div className="px-4 py-4">
+          <div className="w-full max-w-none">
             {page === "dashboard" && <DashboardPage onQuickUser={() => openUserModal("company")} />}
             {page === "usersCompanies" && (
               <UsersCompaniesPage
@@ -187,7 +187,7 @@ function TopNavbar() {
 
 function DashboardPage({ onQuickUser }: { onQuickUser: () => void }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="System Overview"
         description="Real-time performance metrics for Closing Engage ecosystem."
@@ -199,14 +199,14 @@ function DashboardPage({ onQuickUser }: { onQuickUser: () => void }) {
         }
       />
 
-      <div className="grid grid-cols-5 gap-5">
+      <div className="grid grid-cols-5 gap-4">
         {dashboardMetrics.map((metric) => (
           <MetricPanel key={metric.title} {...metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-[1.9fr_1fr] gap-5">
-        <SectionCard className="p-6">
+      <div className="grid grid-cols-[2.1fr_0.95fr] gap-4">
+        <SectionCard className="p-5">
           <div className="mb-8 flex items-start justify-between">
             <div>
               <h3 className="text-[18px] font-semibold text-slate-800">Active Users Trend</h3>
@@ -217,7 +217,7 @@ function DashboardPage({ onQuickUser }: { onQuickUser: () => void }) {
           <ChartPlaceholder />
         </SectionCard>
 
-        <SectionCard className="p-6">
+        <SectionCard className="p-5">
           <div className="mb-6">
             <h3 className="text-[18px] font-semibold text-slate-800">Quick Actions</h3>
             <p className="text-[13px] text-slate-500">Frequent administrative tasks</p>
@@ -255,7 +255,7 @@ function UsersCompaniesPage({
   onViewCompany: () => void;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Users Management"
         description="Manage title companies and notaries within Closing Engage."
@@ -268,7 +268,7 @@ function UsersCompaniesPage({
       />
       <UsersTabs active="companies" onCompanies={() => {}} onNotaries={onOpenNotaries} companyCount="24" notaryCount="142" />
       <FilterBar />
-      <div className="grid max-w-[640px] grid-cols-2 gap-4">
+      <div className="grid max-w-[760px] grid-cols-2 gap-3">
         <SimpleStatCard title="Total Companies" value="24" note="+12% vs last mo" icon="building" />
         <SimpleStatCard title="Active Notaries" value="152" note="Global coverage for Closing Engage" icon="shield" />
       </div>
@@ -287,7 +287,7 @@ function UsersNotariesPage({
   onViewNotary: () => void;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Users Management"
         description="Manage title companies and notaries within Closing Engage."
@@ -300,7 +300,7 @@ function UsersNotariesPage({
       />
       <UsersTabs active="notaries" onCompanies={onOpenCompanies} onNotaries={() => {}} companyCount="142" notaryCount="142" />
       <FilterBar />
-      <div className="grid max-w-[640px] grid-cols-2 gap-4">
+      <div className="grid max-w-[760px] grid-cols-2 gap-3">
         <SimpleStatCard title="Total Companies" value="24" note="+12% vs last mo" icon="building" />
         <SimpleStatCard title="Active Notaries" value="142" note="Global coverage for Closing Engage" icon="shield" />
       </div>
@@ -311,7 +311,7 @@ function UsersNotariesPage({
 
 function CompanyDetailsPage() {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="text-[12px] text-slate-500">Title Companies &nbsp;›&nbsp; Northway Holdings</div>
       <PageHeader
         title="Northway Holdings"
@@ -323,8 +323,8 @@ function CompanyDetailsPage() {
           </div>
         }
       />
-      <div className="grid grid-cols-[1.9fr_0.9fr] gap-5">
-        <SectionCard className="p-6">
+      <div className="grid grid-cols-[2fr_0.9fr] gap-4">
+        <SectionCard className="p-5">
           <div className="flex gap-4">
             <IconBadge tone="blue" large>
               <FileText size={24} />
@@ -349,7 +349,7 @@ function CompanyDetailsPage() {
           <SmallMetricCard title="Completed Orders" value="236" tone="green" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-2 gap-4">
         <SectionCard className="overflow-hidden">
           <TableHeader title="Team Members" action="Manage Team" />
           <table className="w-full">
@@ -405,7 +405,7 @@ function CompanyDetailsPage() {
 
 function NotaryProfilePage() {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="text-[12px] text-slate-500">Notaries &nbsp;›&nbsp; Notary Profile</div>
       <PageHeader
         title="Jane Simmons"
@@ -417,8 +417,8 @@ function NotaryProfilePage() {
           </div>
         }
       />
-      <div className="grid grid-cols-[1.9fr_0.9fr] gap-5">
-        <SectionCard className="p-6">
+      <div className="grid grid-cols-[2fr_0.95fr] gap-4">
+        <SectionCard className="p-5">
           <div className="flex items-start gap-6">
             <div className="relative">
               <Avatar className="h-[110px] w-[110px] rounded-3xl" gradient={profileGradients.jane} />
@@ -440,7 +440,7 @@ function NotaryProfilePage() {
           <div className="mt-2 max-w-[220px] text-[16px] leading-7 text-white/85">Greater New York Area (Manhattan, Brooklyn, Queens)</div>
         </div>
       </div>
-      <div className="grid grid-cols-[1.55fr_1.1fr] gap-5">
+      <div className="grid grid-cols-[1.65fr_1fr] gap-4">
         <SectionCard className="overflow-hidden">
           <TableHeader title="Assigned Orders" action="View All Orders" />
           <table className="w-full">
@@ -464,7 +464,7 @@ function NotaryProfilePage() {
             </tbody>
           </table>
         </SectionCard>
-        <SectionCard className="p-6">
+        <SectionCard className="p-5">
           <h3 className="text-[18px] font-semibold">Upload Activity</h3>
           <div className="mt-6 space-y-5">
             {uploadActivity.map(([title, date]) => (
@@ -487,7 +487,7 @@ function NotaryProfilePage() {
 function OrdersPage({ onOpenOrder }: { onOpenOrder: () => void }) {
   const filters = ["All Orders", "Received", "Assigned", "Under Review", "Approved", "Completed"];
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Orders Management"
         description="Manage and track all closing orders across your portfolio."
@@ -498,8 +498,8 @@ function OrdersPage({ onOpenOrder }: { onOpenOrder: () => void }) {
           </PrimaryButton>
         }
       />
-      <div className="grid grid-cols-[1fr_230px] gap-5">
-        <SectionCard className="p-6">
+      <div className="grid grid-cols-[1fr_220px] gap-4">
+        <SectionCard className="p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Quick Filters</div>
             <button className="text-[13px] font-semibold text-brand-500">Reset All</button>
@@ -510,7 +510,7 @@ function OrdersPage({ onOpenOrder }: { onOpenOrder: () => void }) {
             ))}
           </div>
         </SectionCard>
-        <SectionCard className="p-6">
+        <SectionCard className="p-5">
           <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Time Period</div>
           <div className="mt-3 flex h-11 items-center justify-between rounded-lg border border-line bg-[#F7FAFD] px-4 text-[14px] text-slate-700">
             <span className="flex items-center gap-2"><Calendar size={16} className="text-brand-500" /> Last 30 Days</span>
@@ -525,7 +525,7 @@ function OrdersPage({ onOpenOrder }: { onOpenOrder: () => void }) {
 
 function OrderDetailsPage({ onBack, onAssign }: { onBack: () => void; onAssign: () => void }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
           <button onClick={onBack} className="mt-1 rounded-full border border-line bg-white p-2 text-brand-500"><ArrowLeft size={16} /></button>
@@ -542,8 +542,8 @@ function OrderDetailsPage({ onBack, onAssign }: { onBack: () => void; onAssign: 
           <PrimaryButton onClick={onAssign}>Assign Notary</PrimaryButton>
         </div>
       </div>
-      <SectionCard className="p-6"><StepProgress current={2} /></SectionCard>
-      <div className="grid grid-cols-[1.5fr_1fr] gap-5">
+      <SectionCard className="p-5"><StepProgress current={2} /></SectionCard>
+      <div className="grid grid-cols-[1.65fr_0.95fr] gap-4">
         <div className="space-y-5">
           <SectionCard className="overflow-hidden">
             <div className="table-head flex items-center justify-between px-5 py-4">
@@ -616,9 +616,9 @@ function OrderDetailsPage({ onBack, onAssign }: { onBack: () => void; onAssign: 
 
 function DocumentsPage({ onOpenDocument }: { onOpenDocument: () => void }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title="Documents" description="Manage and access all uploaded files within the transaction pipeline." />
-      <div className="grid grid-cols-[1.4fr_repeat(4,0.65fr)] gap-3">
+      <div className="grid grid-cols-[1.55fr_repeat(4,0.62fr)] gap-3">
         <SearchField placeholder="Search by file name or order ID" />
         <DropdownField label="File Type: All" />
         <DropdownField label="Uploaded By: All" />
@@ -626,7 +626,7 @@ function DocumentsPage({ onOpenDocument }: { onOpenDocument: () => void }) {
         <DropdownField label="Date Range" icon={<Calendar size={16} className="text-slate-400" />} />
       </div>
       <DocumentTable onOpenDocument={onOpenDocument} />
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-3 gap-4">
         <SimpleStatCard title="Total Files" value="2,482" note="+12% this month" icon="folder" />
         <SimpleStatCard title="Needs Approval" value="48" note="Action required" icon="approval" />
         <SimpleStatCard title="Storage Health" value="62%" note="" icon="cloud" progress={62} />
@@ -637,7 +637,7 @@ function DocumentsPage({ onOpenDocument }: { onOpenDocument: () => void }) {
 
 function DocumentViewPage({ onBack }: { onBack: () => void }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <button onClick={onBack} className="text-[12px] font-semibold text-brand-500">← Back to Documents</button>
       <div className="flex items-start justify-between">
         <div>
@@ -655,7 +655,7 @@ function DocumentViewPage({ onBack }: { onBack: () => void }) {
           <PrimaryButton><Download size={15} />Version History</PrimaryButton>
         </div>
       </div>
-      <div className="grid grid-cols-[1.45fr_0.85fr] gap-5">
+      <div className="grid grid-cols-[1.6fr_0.8fr] gap-4">
         <SectionCard className="overflow-hidden p-0">
           <div className="flex items-center justify-between border-b border-line bg-white px-5 py-3">
             <div className="flex items-center gap-3 text-[12px] font-semibold text-slate-600">
@@ -707,7 +707,7 @@ function DocumentViewPage({ onBack }: { onBack: () => void }) {
 
 function AnalyticsPage() {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-[24px] font-bold leading-none text-slate-900">Analytics</h1>
@@ -719,8 +719,8 @@ function AnalyticsPage() {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-5 gap-4">{analyticsMetrics.map((metric) => <MetricPanel key={metric.title} {...metric} compact />)}</div>
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-5 gap-3">{analyticsMetrics.map((metric) => <MetricPanel key={metric.title} {...metric} compact />)}</div>
+      <div className="grid grid-cols-2 gap-4">
         <SectionCard className="p-5">
           <div className="mb-4 flex items-center justify-between"><h3 className="text-[18px] font-semibold">Orders by Status</h3><MoreVertical size={16} className="text-slate-400" /></div>
           <BarPlaceholder />
@@ -730,7 +730,7 @@ function AnalyticsPage() {
           <LinePlaceholder />
         </SectionCard>
       </div>
-      <div className="grid grid-cols-[1.05fr_1fr] gap-5">
+      <div className="grid grid-cols-[1.05fr_1fr] gap-4">
         <SectionCard className="overflow-hidden">
           <TableHeader title="Notary Performance" action="View All" />
           <table className="w-full">
@@ -798,7 +798,7 @@ function AnalyticsPage() {
 
 function SettingsPage() {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <SectionCard className="flex items-center justify-between px-6 py-6">
         <div className="flex items-center gap-4">
           <div className="relative"><Avatar className="h-[58px] w-[58px] rounded-2xl" gradient={profileGradients.alex} /><div className="absolute bottom-0 right-0 rounded-full bg-brand-500 p-1 text-white"><Check size={10} /></div></div>
@@ -810,7 +810,7 @@ function SettingsPage() {
         </div>
         <GhostButton>Edit Profile</GhostButton>
       </SectionCard>
-      <div className="grid grid-cols-[1.75fr_0.9fr] gap-5">
+      <div className="grid grid-cols-[1.85fr_0.85fr] gap-4">
         <div className="space-y-5">
           <FormSection title="Personal Information">
             <div className="grid grid-cols-2 gap-4">
@@ -952,7 +952,7 @@ function AddCompanyUserModal({ onClose }: { onClose: () => void }) {
   return (
     <div>
       <ModalHeader title="Add New User" subtitle="Create a new user account" onClose={onClose} />
-      <div className="space-y-7 px-6 py-6">
+      <div className="space-y-6 px-5 py-5">
         <div>
           <div className="mb-3 text-[14px] font-semibold text-slate-600">User Type Selection</div>
           <div className="inline-flex rounded-xl bg-[#EDF1F7] p-1"><button className="rounded-lg bg-white px-5 py-2 text-[14px] font-semibold text-brand-500 shadow-sm">Title Company</button><button className="px-5 py-2 text-[14px] font-medium text-slate-500">Notary</button></div>
@@ -987,7 +987,7 @@ function AddNotaryModal({ onClose }: { onClose: () => void }) {
   return (
     <div>
       <ModalHeader title="Add Notary" subtitle="Create a new notary account" onClose={onClose} />
-      <div className="space-y-7 px-6 py-6">
+      <div className="space-y-6 px-5 py-5">
         <ModalSectionTitle title="Personal Information" />
         <div className="grid grid-cols-2 gap-5">
           <InputField label="Full Name" placeholder="e.g. Jane Doe" />
@@ -1018,12 +1018,12 @@ function AddNotaryModal({ onClose }: { onClose: () => void }) {
 
 function AssignNotaryModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="p-8">
+    <div className="p-6">
       <div className="mb-6 flex items-start justify-between">
         <div><h2 className="text-[24px] font-bold text-slate-900">Assign Notary</h2><p className="text-[15px] text-slate-500">Select a notary for this order</p></div>
         <button onClick={onClose} className="text-slate-500"><X size={30} strokeWidth={1.5} /></button>
       </div>
-      <div className="rounded-2xl bg-[#EEF3FA] p-6">
+      <div className="rounded-2xl bg-[#EEF3FA] p-5">
         <div className="grid grid-cols-[130px_1fr] gap-y-4 text-[16px]">
           <div className="font-semibold uppercase tracking-[0.08em] text-slate-500">Order ID</div>
           <div className="text-right font-semibold">#ORD-90212</div>
@@ -1115,7 +1115,7 @@ function StatusBadge({ status }: { status: StatusKey }) {
 }
 
 function Pagination({ footer, pages, withPrevious = false }: { footer: string; pages: string[]; withPrevious?: boolean; }) {
-  return <div className="flex items-center justify-between bg-[#EEF3FA] px-5 py-4 text-[14px] text-slate-500"><div>{footer}</div><div className="flex items-center gap-3">{withPrevious ? <button className="flex items-center gap-1 text-slate-400"><ChevronLeft size={14} /> Previous</button> : <ChevronLeft size={14} className="text-slate-400" />}{pages.map((page, index) => <button key={`${page}-${index}`} className={`flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-[13px] ${index === 0 ? "bg-brand-500 text-white" : "text-slate-600"}`}>{page}</button>)}{withPrevious ? <button className="flex items-center gap-1 text-slate-600">Next <ChevronRight size={14} /></button> : <ChevronRight size={14} className="text-slate-500" />}</div></div>;
+  return <div className="flex items-center justify-between bg-[#EEF3FA] px-4 py-3 text-[13px] text-slate-500"><div>{footer}</div><div className="flex items-center gap-2">{withPrevious ? <button className="flex items-center gap-1 text-slate-400"><ChevronLeft size={14} /> Previous</button> : <ChevronLeft size={14} className="text-slate-400" />}{pages.map((page, index) => <button key={`${page}-${index}`} className={`flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-[13px] ${index === 0 ? "bg-brand-500 text-white" : "text-slate-600"}`}>{page}</button>)}{withPrevious ? <button className="flex items-center gap-1 text-slate-600">Next <ChevronRight size={14} /></button> : <ChevronRight size={14} className="text-slate-500" />}</div></div>;
 }
 
 function ChartPlaceholder() {
@@ -1134,7 +1134,7 @@ function LinePlaceholder() {
 }
 
 function TableHeader({ title, action }: { title: string; action: string }) {
-  return <div className="flex items-center justify-between px-6 py-5"><h3 className="text-[18px] font-semibold">{title}</h3><button className="text-[13px] font-semibold text-brand-500">{action}</button></div>;
+  return <div className="flex items-center justify-between px-5 py-4"><h3 className="text-[18px] font-semibold">{title}</h3><button className="text-[13px] font-semibold text-brand-500">{action}</button></div>;
 }
 
 function InfoBlock({ label, lines, strongFirst = false, icons = [] }: { label: string; lines: string[]; strongFirst?: boolean; icons?: Array<any>; }) {
@@ -1142,11 +1142,11 @@ function InfoBlock({ label, lines, strongFirst = false, icons = [] }: { label: s
 }
 
 function SmallMetricCard({ title, value, tone }: { title: string; value: string; tone: "blue" | "blue2" | "green"; }) {
-  return <SectionCard className="flex items-center gap-4 p-6"><IconBadge tone={tone}><FileText size={18} /></IconBadge><div><div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">{title}</div><div className={`mt-1 text-[18px] font-bold ${tone === "green" ? "text-[#2E9F54]" : tone === "blue2" ? "text-[#2381FF]" : "text-slate-900"}`}>{value}</div></div></SectionCard>;
+  return <SectionCard className="flex items-center gap-4 p-5"><IconBadge tone={tone}><FileText size={18} /></IconBadge><div><div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">{title}</div><div className={`mt-1 text-[18px] font-bold ${tone === "green" ? "text-[#2E9F54]" : tone === "blue2" ? "text-[#2381FF]" : "text-slate-900"}`}>{value}</div></div></SectionCard>;
 }
 
 function ActivityLog({ title, items, footer }: { title: string; items: Array<{ title: string; date: string; tone: string }>; footer: string; }) {
-  return <SectionCard className="p-5"><div className="mb-6 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">{title}</div><div className="space-y-6">{items.map((item, index) => <div key={item.title} className="relative flex gap-4"><div className="relative mt-1 flex flex-col items-center"><div className={`flex h-4 w-4 items-center justify-center rounded-full ${item.tone === "green" ? "bg-[#DCF9E5] text-[#2E9F54]" : item.tone === "blue" ? "bg-[#EEF5FF] text-brand-500" : "bg-[#EFF3FA] text-slate-400"}`}><div className="h-2 w-2 rounded-full bg-current" /></div>{index < items.length - 1 ? <div className="mt-2 h-10 w-px bg-[#E7ECF4]" /> : null}</div><div><div className="text-[14px] font-semibold text-slate-700">{item.title}</div><div className="text-[12px] text-slate-400">{item.date}</div></div></div>)}</div><button className="mt-6 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">{footer}</button></SectionCard>;
+  return <SectionCard className="p-4"><div className="mb-5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">{title}</div><div className="space-y-5">{items.map((item, index) => <div key={item.title} className="relative flex gap-4"><div className="relative mt-1 flex flex-col items-center"><div className={`flex h-4 w-4 items-center justify-center rounded-full ${item.tone === "green" ? "bg-[#DCF9E5] text-[#2E9F54]" : item.tone === "blue" ? "bg-[#EEF5FF] text-brand-500" : "bg-[#EFF3FA] text-slate-400"}`}><div className="h-2 w-2 rounded-full bg-current" /></div>{index < items.length - 1 ? <div className="mt-2 h-10 w-px bg-[#E7ECF4]" /> : null}</div><div><div className="text-[14px] font-semibold text-slate-700">{item.title}</div><div className="text-[12px] text-slate-400">{item.date}</div></div></div>)}</div><button className="mt-5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">{footer}</button></SectionCard>;
 }
 
 function StepProgress({ current }: { current: number }) {
@@ -1166,7 +1166,7 @@ function MetricStrip({ title, value, dot = false }: { title: string; value: stri
 }
 
 function FormSection({ title, children }: { title: string; children: ReactNode }) {
-  return <SectionCard className="overflow-hidden"><div className="border-b border-line px-5 py-4 text-[18px] font-semibold">{title}</div><div className="p-5">{children}</div></SectionCard>;
+  return <SectionCard className="overflow-hidden"><div className="border-b border-line px-4 py-3.5 text-[18px] font-semibold">{title}</div><div className="p-4">{children}</div></SectionCard>;
 }
 
 function FormField({ label, value }: { label: string; value: string }) {
@@ -1178,15 +1178,15 @@ function NotificationRow({ title, text, checked }: { title: string; text: string
 }
 
 function Modal({ children, onClose, widthClass }: { children: ReactNode; onClose: () => void; widthClass: string; }) {
-  return <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/18 p-6" onClick={onClose}><div className={`w-full rounded-[28px] bg-white shadow-modal ${widthClass}`} onClick={(e) => e.stopPropagation()}>{children}</div></div>;
+  return <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/18 p-4" onClick={onClose}><div className={`w-full rounded-[28px] bg-white shadow-modal ${widthClass}`} onClick={(e) => e.stopPropagation()}>{children}</div></div>;
 }
 
 function ModalHeader({ title, subtitle, onClose }: { title: string; subtitle: string; onClose: () => void; }) {
-  return <div className="flex items-start justify-between border-b border-line px-6 py-6"><div><h2 className="text-[24px] font-bold">{title}</h2><p className="text-[15px] text-slate-500">{subtitle}</p></div><button onClick={onClose} className="text-slate-500"><X size={28} strokeWidth={1.5} /></button></div>;
+  return <div className="flex items-start justify-between border-b border-line px-5 py-5"><div><h2 className="text-[24px] font-bold">{title}</h2><p className="text-[15px] text-slate-500">{subtitle}</p></div><button onClick={onClose} className="text-slate-500"><X size={28} strokeWidth={1.5} /></button></div>;
 }
 
 function ModalFooter({ onClose, confirmLabel }: { onClose: () => void; confirmLabel: string; }) {
-  return <div className="flex items-center justify-end gap-6 rounded-b-[28px] bg-[#EEF3FA] px-6 py-5"><button onClick={onClose} className="text-[16px] font-semibold text-slate-600">Cancel</button><button className="rounded-lg bg-brand-500 px-8 py-3 text-[15px] font-semibold text-white">{confirmLabel}</button></div>;
+  return <div className="flex items-center justify-end gap-5 rounded-b-[28px] bg-[#EEF3FA] px-5 py-4"><button onClick={onClose} className="text-[16px] font-semibold text-slate-600">Cancel</button><button className="rounded-lg bg-brand-500 px-8 py-3 text-[15px] font-semibold text-white">{confirmLabel}</button></div>;
 }
 
 function InputField({ label, placeholder, icon }: { label: string; placeholder: string; icon?: ReactNode; }) {
