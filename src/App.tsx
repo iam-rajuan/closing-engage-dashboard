@@ -92,6 +92,22 @@ export default function App() {
   const [orders, setOrders] = useState<any[]>([...initialOrderRows]);
   const [documents, setDocuments] = useState<any[]>([...initialDocumentRows]);
 
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm });
+  };
+
   const openUserModal = (mode: UserModalMode) => {
     setUserModalMode(mode);
     setUserModalOpen(true);
@@ -177,6 +193,35 @@ export default function App() {
               setPage("orderDetails");
             }}
           />
+        </Modal>
+      ) : null}
+
+      {confirmModal.isOpen ? (
+        <Modal onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} widthClass="max-w-[440px]">
+          <div className="p-7">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 mb-6">
+              <AlertTriangle size={28} />
+            </div>
+            <h2 className="text-[24px] font-bold text-slate-900">{confirmModal.title}</h2>
+            <p className="mt-3 text-[15px] leading-relaxed text-slate-500">{confirmModal.message}</p>
+            <div className="mt-8 flex gap-3">
+              <button 
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="flex-1 h-12 rounded-xl border border-slate-200 bg-white font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }}
+                className="flex-1 h-12 rounded-xl bg-rose-600 font-semibold text-white shadow-lg shadow-rose-200 hover:bg-rose-700 transition-transform active:scale-[0.98]"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </Modal>
       ) : null}
     </div>
@@ -1407,9 +1452,11 @@ function CompanyTable({ onViewCompany, rows }: { onViewCompany: () => void; rows
   const { setCompanies } = useAppContext();
   
   const handleDelete = (name: string) => {
-    if (confirm(`Are you sure you want to delete ${name}?`)) {
-      setCompanies(prev => prev.filter(c => c[2] !== name));
-    }
+    showConfirm(
+      "Delete Company?",
+      `Are you sure you want to remove ${name} from the system? This action will permanently delete all associated data.`,
+      () => setCompanies(prev => prev.filter(c => c[2] !== name))
+    );
   };
 
   return (
@@ -1438,9 +1485,11 @@ function NotaryTable({ onViewNotary, rows }: { onViewNotary: () => void; rows: a
   const { setNotaries } = useAppContext();
 
   const handleDelete = (name: string) => {
-    if (confirm(`Are you sure you want to delete ${name}?`)) {
-      setNotaries(prev => prev.filter(n => n[2] !== name));
-    }
+    showConfirm(
+      "Delete Notary?",
+      `Are you sure you want to remove ${name} from the network? This will revoke their access to the portal immediately.`,
+      () => setNotaries(prev => prev.filter(n => n[2] !== name))
+    );
   };
 
   return (
@@ -2156,18 +2205,18 @@ function DropdownField({
     <div className="relative">
       <button 
         onClick={() => setOpen(!open)}
-        className="flex h-11 min-w-[140px] items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 text-[14px] text-slate-600 hover:bg-slate-50"
+        className="flex h-11 min-w-[140px] items-center justify-between gap-3 rounded-[12px] border border-[#e2e8f3] bg-white px-4 text-[14px] font-semibold text-slate-700 transition hover:border-brand-300 hover:bg-slate-50"
       >
         <span className="flex items-center gap-2">{icon}{label}</span>
-        <ChevronDown size={16} className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown size={16} className={`text-slate-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 min-w-full rounded-xl border border-line bg-white py-1 shadow-lg">
+        <div className="absolute top-full left-0 z-50 mt-2 min-w-full overflow-hidden rounded-[14px] border border-[#e2e8f3] bg-white py-1 shadow-[0_12px_40px_rgba(20,48,112,0.12)] animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(opt => (
             <button
               key={opt}
               onClick={() => { onSelect(opt); setOpen(false); }}
-              className={`w-full px-4 py-2 text-left text-[14px] hover:bg-slate-50 ${label === opt ? "bg-slate-50 font-semibold text-brand-500" : "text-slate-700"}`}
+              className={`w-full px-4 py-2.5 text-left text-[14px] transition-colors hover:bg-brand-50 ${label === opt ? "bg-brand-50 font-bold text-brand-600" : "text-slate-600 hover:text-brand-600"}`}
             >
               {opt}
             </button>
@@ -2306,18 +2355,26 @@ function NotificationRow({ title, text, checked, onToggle }: { title: string; te
 
 function Modal({ children, onClose, widthClass }: { children: ReactNode; onClose: () => void; widthClass: string; }) {
   return (
-    <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-900/18 p-4" onClick={onClose}>
-      <div className="flex min-h-full items-start justify-center py-6">
-        <div className={`w-full rounded-[28px] bg-white shadow-modal ${widthClass}`} onClick={(e) => e.stopPropagation()}>
-          {children}
-        </div>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-5 backdrop-blur-[2px] transition-all duration-300" onClick={onClose}>
+      <div className={`w-full overflow-hidden rounded-[24px] border border-[#dfe6f2] bg-white shadow-[0_30px_70px_rgba(15,23,42,0.22)] animate-in zoom-in-95 duration-200 ${widthClass}`} onClick={(e) => e.stopPropagation()}>
+        {children}
       </div>
     </div>
   );
 }
 
 function ModalHeader({ title, subtitle, onClose }: { title: string; subtitle: string; onClose: () => void; }) {
-  return <div className="flex items-start justify-between border-b border-line px-5 py-5"><div><h2 className="text-[24px] font-bold">{title}</h2><p className="text-[15px] text-slate-500">{subtitle}</p></div><button onClick={onClose} className="text-slate-500"><X size={28} strokeWidth={1.5} /></button></div>;
+  return (
+    <div className="flex items-start justify-between px-7 py-7">
+      <div>
+        <h2 className="text-[32px] font-extrabold tracking-[-0.04em] text-ink-900 md:text-[38px]">{title}</h2>
+        <p className="mt-2 text-[15px] text-ink-500 md:text-[16px]">{subtitle}</p>
+      </div>
+      <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-[#f6f8fd] hover:text-ink-700">
+        <X size={20} />
+      </button>
+    </div>
+  );
 }
 
 function ModalFooter({ onClose, confirmLabel }: { onClose: () => void; confirmLabel: string; }) {
@@ -2326,11 +2383,11 @@ function ModalFooter({ onClose, confirmLabel }: { onClose: () => void; confirmLa
 
 function ModalActionFooter({ onClose, onConfirm, confirmLabel }: { onClose: () => void; onConfirm: () => void; confirmLabel: string }) {
   return (
-    <div className="flex items-center justify-end gap-5 rounded-b-[28px] bg-[#EEF3FA] px-5 py-4">
-      <button onClick={onClose} className="text-[16px] font-semibold text-slate-600">
+    <div className="flex items-center justify-end gap-3 border-t border-[#edf1f7] bg-[#fbfcff] px-7 py-5">
+      <button onClick={onClose} className="h-[46px] rounded-[12px] border border-[#dfe6f2] bg-white px-6 text-[15px] font-semibold text-ink-700 transition hover:bg-slate-50">
         Cancel
       </button>
-      <button onClick={onConfirm} className="rounded-lg bg-brand-500 px-8 py-3 text-[15px] font-semibold text-white">
+      <button onClick={onConfirm} className="h-[46px] rounded-[12px] bg-brand-500 px-8 text-[15px] font-semibold text-white shadow-[0_14px_32px_rgba(29,93,195,0.22)] transition hover:bg-brand-600 hover:-translate-y-0.5">
         {confirmLabel}
       </button>
     </div>
