@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   ArrowLeft,
@@ -36,13 +36,13 @@ import {
   analyticsMetrics,
   assignableNotaries,
   assignedOrders,
-  companyRows,
+  companyRows as initialCompanyRows,
   dashboardMetrics,
-  documentRows,
+  documentRows as initialDocumentRows,
   documentTimeline,
   navItems,
-  notaryRows,
-  orderRows,
+  notaryRows as initialNotaryRows,
+  orderRows as initialOrderRows,
   orderTimeline,
   pageGroups,
   profileGradients,
@@ -58,8 +58,25 @@ import closingEngageLogo from "./assets/closing-engage-logo.svg";
 
 type UserModalMode = "company" | "notary";
 type StatusKey = keyof typeof statusConfig;
-type OrderRow = (typeof orderRows)[number];
-type DocumentRow = (typeof documentRows)[number];
+type OrderRow = (typeof initialOrderRows)[number] | any[];
+type DocumentRow = (typeof initialDocumentRows)[number] | any[];
+
+export const AppContext = createContext<{
+  companies: any[];
+  setCompanies: React.Dispatch<React.SetStateAction<any[]>>;
+  notaries: any[];
+  setNotaries: React.Dispatch<React.SetStateAction<any[]>>;
+  orders: any[];
+  setOrders: React.Dispatch<React.SetStateAction<any[]>>;
+  documents: any[];
+  setDocuments: React.Dispatch<React.SetStateAction<any[]>>;
+} | null>(null);
+
+export const useAppContext = () => {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("Missing AppContext");
+  return ctx;
+};
 
 export default function App() {
   const [page, setPage] = useState<PageKey>("dashboard");
@@ -69,6 +86,11 @@ export default function App() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [createOrderModalOpen, setCreateOrderModalOpen] = useState(false);
   const activeNav = useMemo(() => pageGroups[page], [page]);
+
+  const [companies, setCompanies] = useState<any[]>([...initialCompanyRows]);
+  const [notaries, setNotaries] = useState<any[]>([...initialNotaryRows]);
+  const [orders, setOrders] = useState<any[]>([...initialOrderRows]);
+  const [documents, setDocuments] = useState<any[]>([...initialDocumentRows]);
 
   const openUserModal = (mode: UserModalMode) => {
     setUserModalMode(mode);
@@ -87,6 +109,7 @@ export default function App() {
   }
 
   return (
+    <AppContext.Provider value={{ companies, setCompanies, notaries, setNotaries, orders, setOrders, documents, setDocuments }}>
     <div className="h-full bg-canvas text-slate-800">
       <Sidebar
         activeKey={activeNav}
@@ -157,6 +180,7 @@ export default function App() {
         </Modal>
       ) : null}
     </div>
+    </AppContext.Provider>
   );
 }
 
@@ -437,6 +461,18 @@ function UsersCompaniesPage({
   onOpenNotaries: () => void;
   onViewCompany: () => void;
 }) {
+  const { companies } = useAppContext();
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("All Status");
+
+  const filtered = companies.filter((c) => {
+    const matchesSearch = c[2].toLowerCase().includes(search.toLowerCase()) || 
+                         c[3].toLowerCase().includes(search.toLowerCase()) ||
+                         c[4].toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = status === "All Status" || c[6] === status;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -449,13 +485,19 @@ function UsersCompaniesPage({
           </PrimaryButton>
         }
       />
-      <UsersTabs active="companies" onCompanies={() => {}} onNotaries={onOpenNotaries} companyCount="24" notaryCount="142" />
-      <FilterBar />
+      <UsersTabs active="companies" onCompanies={() => {}} onNotaries={onOpenNotaries} companyCount={companies.length.toString()} notaryCount="142" />
+      <FilterBar 
+        searchValue={search} 
+        onSearchChange={setSearch} 
+        statusValue={status} 
+        onStatusChange={setStatus} 
+        statusOptions={["All Status", "Active", "Inactive", "Pending"]}
+      />
       <div className="grid max-w-[760px] grid-cols-2 gap-3">
-        <SimpleStatCard title="Total Companies" value="24" note="+12% vs last mo" icon="building" />
+        <SimpleStatCard title="Total Companies" value={companies.length.toString()} note="+12% vs last mo" icon="building" />
         <SimpleStatCard title="Active Notaries" value="152" note="Global coverage for Closing Engage" icon="shield" />
       </div>
-      <CompanyTable onViewCompany={onViewCompany} />
+      <CompanyTable onViewCompany={onViewCompany} rows={filtered} />
     </div>
   );
 }
@@ -469,6 +511,18 @@ function UsersNotariesPage({
   onOpenCompanies: () => void;
   onViewNotary: () => void;
 }) {
+  const { notaries } = useAppContext();
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("All Status");
+
+  const filtered = notaries.filter((n) => {
+    const matchesSearch = n[2].toLowerCase().includes(search.toLowerCase()) || 
+                         n[4].toLowerCase().includes(search.toLowerCase()) ||
+                         n[6].toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = status === "All Status" || n[7] === status;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -481,18 +535,32 @@ function UsersNotariesPage({
           </PrimaryButton>
         }
       />
-      <UsersTabs active="notaries" onCompanies={onOpenCompanies} onNotaries={() => {}} companyCount="142" notaryCount="142" />
-      <FilterBar />
+      <UsersTabs active="notaries" onCompanies={onOpenCompanies} onNotaries={() => {}} companyCount="24" notaryCount={notaries.length.toString()} />
+      <FilterBar 
+        searchValue={search} 
+        onSearchChange={setSearch} 
+        statusValue={status} 
+        onStatusChange={setStatus} 
+        statusOptions={["All Status", "Active", "Inactive", "Verified", "Pending"]}
+      />
       <div className="grid max-w-[760px] grid-cols-2 gap-3">
         <SimpleStatCard title="Total Companies" value="24" note="+12% vs last mo" icon="building" />
-        <SimpleStatCard title="Active Notaries" value="142" note="Global coverage for Closing Engage" icon="shield" />
+        <SimpleStatCard title="Active Notaries" value={notaries.length.toString()} note="Global coverage for Closing Engage" icon="shield" />
       </div>
-      <NotaryTable onViewNotary={onViewNotary} />
+      <NotaryTable onViewNotary={onViewNotary} rows={filtered} />
     </div>
   );
 }
 
 function CompanyDetailsPage() {
+  const { setCompanies } = useAppContext();
+  const handleDeactivate = () => {
+    setCompanies((prev: any) => prev.map((c: any) => c[2] === "Northway Holdings" ? [...c.slice(0, 6), "Inactive", c[7]] : c));
+  };
+  const handleDelete = () => {
+    setCompanies((prev: any) => prev.filter((c: any) => c[2] !== "Northway Holdings"));
+  };
+
   return (
     <div className="space-y-5">
       <div className="text-[12px] text-slate-500">Title Companies &nbsp;›&nbsp; Northway Holdings</div>
@@ -501,8 +569,8 @@ function CompanyDetailsPage() {
         action={
           <div className="flex gap-3">
             <GhostButton className="border-[#D8E1EE]">Edit Company</GhostButton>
-            <GhostButton className="border-[#F3C7C6] text-[#D14544]">Deactivate</GhostButton>
-            <button className="rounded-lg bg-[#D92E2A] px-5 py-3 text-[14px] font-semibold text-white">Delete</button>
+            <GhostButton onClick={handleDeactivate} className="border-[#F3C7C6] text-[#D14544]">Deactivate</GhostButton>
+            <button onClick={handleDelete} className="rounded-lg bg-[#D92E2A] px-5 py-3 text-[14px] font-semibold text-white">Delete</button>
           </div>
         }
       />
@@ -587,15 +655,20 @@ function CompanyDetailsPage() {
 }
 
 function NotaryProfilePage() {
+  const { setNotaries } = useAppContext();
+  const handleVerify = () => {
+    setNotaries((prev: any) => prev.map((n: any) => n[2] === "Sarah Harrison" ? [...n.slice(0, 7), "Active", n[8]] : n));
+  };
+
   return (
     <div className="space-y-5">
       <div className="text-[12px] text-slate-500">Notaries &nbsp;›&nbsp; Notary Profile</div>
       <PageHeader
-        title="Jane Simmons"
+        title="Sarah Harrison"
         action={
           <div className="flex gap-3">
             <GhostButton>Edit</GhostButton>
-            <PrimaryButton>Verify Notary</PrimaryButton>
+            <PrimaryButton onClick={handleVerify}>Verify Notary</PrimaryButton>
             <GhostButton className="border-transparent bg-white text-[#D14544]">Actions</GhostButton>
           </div>
         }
@@ -668,13 +741,18 @@ function NotaryProfilePage() {
 }
 
 function OrdersPage({ onOpenOrder, onCreateOrder }: { onOpenOrder: () => void; onCreateOrder: () => void }) {
+  const { orders: orderRows } = useAppContext();
   const [activeFilter, setActiveFilter] = useState("All Orders");
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All Status");
+
   const filters = ["All Orders", "Received", "Assigned", "Under Review", "Approved", "Completed"];
+
   const filteredRows = orderRows.filter(([id, company, , notary, location, , status]) => {
     const matchesFilter = activeFilter === "All Orders" ? true : status === activeFilter;
+    const matchesStatus = statusFilter === "All Status" ? true : status === statusFilter;
     const matchesSearch = `${id} ${company} ${notary} ${location}`.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesStatus && matchesSearch;
   });
 
   return (
@@ -708,7 +786,7 @@ function OrdersPage({ onOpenOrder, onCreateOrder }: { onOpenOrder: () => void; o
       <div className="rounded-xl bg-white px-4 py-3 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="flex h-11 flex-1 items-center gap-3 rounded-lg bg-[#F5F8FC] px-4 text-slate-400">
-            <Filter size={15} />
+            <Search size={15} />
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
@@ -716,9 +794,13 @@ function OrdersPage({ onOpenOrder, onCreateOrder }: { onOpenOrder: () => void; o
               placeholder="Filter by order ID, company, notary or city..."
             />
           </div>
-          <DropdownField label="All Status" />
-          <DropdownField label="Sort by: Newest" />
-          <button onClick={() => { setSearchQuery(""); setActiveFilter("All Orders"); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50">
+          <DropdownField 
+            label={statusFilter} 
+            options={["All Status", "Received", "Assigned", "Under Review", "Approved", "Completed"]} 
+            onSelect={setStatusFilter}
+          />
+          <DropdownField label="Sort by: Newest" options={["Newest", "Oldest"]} />
+          <button onClick={() => { setSearchQuery(""); setActiveFilter("All Orders"); setStatusFilter("All Status"); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-50">
             <Download size={16} />
           </button>
         </div>
@@ -730,7 +812,7 @@ function OrdersPage({ onOpenOrder, onCreateOrder }: { onOpenOrder: () => void; o
             <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Total Orders</div>
             <IconBadge tone="blue"><FileText size={18} /></IconBadge>
           </div>
-          <div className="text-[18px] font-bold text-slate-900">248</div>
+          <div className="text-[18px] font-bold text-slate-900">{orderRows.length}</div>
           <div className="mt-2 text-[12px] font-semibold text-[#38A868]">+12% vs last month</div>
         </SectionCard>
         <SectionCard className="p-5">
@@ -738,7 +820,7 @@ function OrdersPage({ onOpenOrder, onCreateOrder }: { onOpenOrder: () => void; o
             <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Under Review</div>
             <IconBadge tone="amber"><FileText size={18} /></IconBadge>
           </div>
-          <div className="text-[18px] font-bold text-slate-900">28</div>
+          <div className="text-[18px] font-bold text-slate-900">{orderRows.filter(o => o[6] === "Under Review").length}</div>
           <div className="mt-2 text-[12px] font-semibold text-[#D4882F]">Awaiting action</div>
         </SectionCard>
         <SectionCard className="p-5">
@@ -746,7 +828,7 @@ function OrdersPage({ onOpenOrder, onCreateOrder }: { onOpenOrder: () => void; o
             <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Assigned Today</div>
             <IconBadge tone="green"><FileText size={18} /></IconBadge>
           </div>
-          <div className="text-[18px] font-bold text-slate-900">12</div>
+          <div className="text-[18px] font-bold text-slate-900">{orderRows.filter(o => o[6] === "Assigned").length}</div>
           <div className="mt-2 text-[12px] font-semibold text-brand-500">Routing is on track</div>
         </SectionCard>
       </div>
@@ -856,8 +938,15 @@ function OrderDetailsPage({ onBack, onAssign }: { onBack: () => void; onAssign: 
 }
 
 function DocumentsPage({ onOpenDocument }: { onOpenDocument: () => void }) {
+  const { documents: documentRows } = useAppContext();
   const [searchQuery, setSearchQuery] = useState("");
-  const filteredDocuments = documentRows.filter(([fileName, orderId]) => `${fileName} ${orderId}`.toLowerCase().includes(searchQuery.toLowerCase()));
+  const [statusFilter, setStatusFilter] = useState("Status: All");
+
+  const filteredDocuments = documentRows.filter(([fileName, orderId, , , , status]) => {
+    const matchesSearch = `${fileName} ${orderId}`.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "Status: All" ? true : status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-5">
@@ -872,15 +961,19 @@ function DocumentsPage({ onOpenDocument }: { onOpenDocument: () => void }) {
             placeholder="Search by file name or order ID"
           />
         </label>
-        <DropdownField label="File Type: All" />
+        <DropdownField label="File Type: All" options={["File Type: All", "PDF", "JPG", "PNG"]} />
         <DropdownField label="Uploaded By: All" />
-        <DropdownField label="Status: All" />
+        <DropdownField 
+          label={statusFilter} 
+          options={["Status: All", "Pending Review", "Approved", "Rejected"]} 
+          onSelect={setStatusFilter}
+        />
         <DropdownField label="Date Range" icon={<Calendar size={16} className="text-slate-400" />} />
       </div>
       <DocumentTable onOpenDocument={onOpenDocument} rows={filteredDocuments} />
       <div className="grid grid-cols-3 gap-4">
-        <SimpleStatCard title="Total Files" value="2,482" note="+12% this month" icon="folder" />
-        <SimpleStatCard title="Needs Approval" value="48" note="Action required" icon="approval" />
+        <SimpleStatCard title="Total Files" value={documentRows.length.toLocaleString()} note="+12% this month" icon="folder" />
+        <SimpleStatCard title="Needs Approval" value={documentRows.filter(d => d[5] === "Pending Review").length.toString()} note="Action required" icon="approval" />
         <SimpleStatCard title="Storage Health" value="62%" note="" icon="cloud" progress={62} />
       </div>
     </div>
@@ -888,6 +981,14 @@ function DocumentsPage({ onOpenDocument }: { onOpenDocument: () => void }) {
 }
 
 function DocumentViewPage({ onBack }: { onBack: () => void }) {
+  const { setDocuments } = useAppContext();
+  const handleApprove = () => {
+    setDocuments((prev: any) => prev.map((d: any) => d[0] === "Closing_Disclosure_Fina..." ? [d[0], d[1], d[2], d[3], d[4], "Approved"] : d));
+  };
+  const handleReject = () => {
+    setDocuments((prev: any) => prev.map((d: any) => d[0] === "Closing_Disclosure_Fina..." ? [d[0], d[1], d[2], d[3], d[4], "Rejected"] : d));
+  };
+
   return (
     <div className="space-y-5">
       <button onClick={onBack} className="text-[12px] font-semibold text-brand-500">← Back to Documents</button>
@@ -928,8 +1029,8 @@ function DocumentViewPage({ onBack }: { onBack: () => void }) {
           <SectionCard className="p-5">
             <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Verification Action</div>
             <div className="space-y-3">
-              <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 py-3 text-[14px] font-semibold text-white"><ShieldCheck size={16} />Approve Document</button>
-              <button className="w-full rounded-lg border border-[#EF9B98] py-3 text-[14px] font-semibold text-[#DD514B]">Reject &amp; Request Changes</button>
+              <button onClick={handleApprove} className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 py-3 text-[14px] font-semibold text-white"><ShieldCheck size={16} />Approve Document</button>
+              <button onClick={handleReject} className="w-full rounded-lg border border-[#EF9B98] py-3 text-[14px] font-semibold text-[#DD514B]">Reject &amp; Request Changes</button>
               <button className="w-full rounded-lg bg-[#EEF3FA] py-3 text-[14px] font-semibold text-slate-600">Download File</button>
             </div>
           </SectionCard>
@@ -1302,48 +1403,64 @@ function StatusTile({ label, value, tone }: { label: string; value: string; tone
   );
 }
 
-function CompanyTable({ onViewCompany }: { onViewCompany: () => void }) {
+function CompanyTable({ onViewCompany, rows }: { onViewCompany: () => void; rows: any[] }) {
+  const { setCompanies } = useAppContext();
+  
+  const handleDelete = (name: string) => {
+    if (confirm(`Are you sure you want to delete ${name}?`)) {
+      setCompanies(prev => prev.filter(c => c[2] !== name));
+    }
+  };
+
   return (
     <SectionCard className="overflow-hidden">
       <table className="w-full">
         <thead className="table-head"><tr><th className="px-5 py-4 text-left">Company Name</th><th className="px-3 py-4 text-left">Contact Person</th><th className="px-3 py-4 text-left">Contact Details</th><th className="px-3 py-4 text-left">Status</th><th className="px-3 py-4 text-left">Created Date</th><th className="px-5 py-4 text-left">Actions</th></tr></thead>
         <tbody>
-          {companyRows.map(([initials, color, companyName, contactPerson, email, phone, status, createdDate]) => (
+          {rows.map(([initials, color, companyName, contactPerson, email, phone, status, createdDate]) => (
             <tr key={companyName} className="border-t border-line bg-white text-[14px]">
               <td className="px-5 py-6"><div className="flex items-center gap-3"><div className={`flex h-8 w-8 items-center justify-center rounded-lg text-[12px] font-bold ${color}`}>{initials}</div><div className="max-w-[130px] text-[14px] font-semibold leading-5 text-slate-800">{companyName}</div></div></td>
               <td className="px-3 py-6 text-slate-700">{contactPerson}</td>
               <td className="px-3 py-6"><div className="leading-5 text-slate-700">{email}</div><div className="mt-1 text-[12px] text-slate-500">{phone}</div></td>
               <td className="px-3 py-6"><StatusBadge status={status as StatusKey} /></td>
               <td className="px-3 py-6 text-slate-500">{createdDate}</td>
-              <td className="px-5 py-6"><div className="flex items-center gap-4 text-slate-500"><button onClick={onViewCompany} className="hover:text-brand-500"><Eye size={16} /></button><button className="hover:text-brand-500"><Pencil size={15} /></button><button className="hover:text-[#D14544]"><Trash2 size={15} /></button></div></td>
+              <td className="px-5 py-6"><div className="flex items-center gap-4 text-slate-500"><button onClick={onViewCompany} className="hover:text-brand-500"><Eye size={16} /></button><button className="hover:text-brand-500"><Pencil size={15} /></button><button onClick={() => handleDelete(companyName)} className="hover:text-[#D14544]"><Trash2 size={15} /></button></div></td>
             </tr>
           ))}
         </tbody>
       </table>
-      <Pagination footer="Showing 1 to 4 of 24 companies" pages={["1", "2", "3", "...", "6"]} />
+      <Pagination footer={`Showing 1 to ${rows.length} of ${rows.length} companies`} pages={["1"]} />
     </SectionCard>
   );
 }
 
-function NotaryTable({ onViewNotary }: { onViewNotary: () => void }) {
+function NotaryTable({ onViewNotary, rows }: { onViewNotary: () => void; rows: any[] }) {
+  const { setNotaries } = useAppContext();
+
+  const handleDelete = (name: string) => {
+    if (confirm(`Are you sure you want to delete ${name}?`)) {
+      setNotaries(prev => prev.filter(n => n[2] !== name));
+    }
+  };
+
   return (
     <SectionCard className="overflow-hidden">
       <table className="w-full">
         <thead className="table-head"><tr><th className="px-4 py-4 text-left">Name</th><th className="px-4 py-4 text-left">Contact Details</th><th className="px-4 py-4 text-left">License No.</th><th className="px-4 py-4 text-left">Status</th><th className="px-4 py-4 text-left">Created Date</th><th className="px-4 py-4 text-left">Actions</th></tr></thead>
         <tbody>
-          {notaryRows.map(([initials, color, name, specialty, email, phone, license, status, createdDate]) => (
+          {rows.map(([initials, color, name, specialty, email, phone, license, status, createdDate]) => (
             <tr key={name} className="border-t border-line text-[14px]">
               <td className="px-4 py-5"><div className="flex items-center gap-3"><div className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold ${color}`}>{initials}</div><div><div className="font-semibold text-slate-800">{name}</div><div className="text-[12px] text-slate-500">{specialty}</div></div></div></td>
               <td className="px-4 py-5"><div className="text-slate-700">{email}</div><div className="text-[12px] text-slate-500">{phone}</div></td>
               <td className="px-4 py-5"><span className="rounded-md bg-[#EEF3FA] px-3 py-1 text-[13px] text-slate-600">{license}</span></td>
               <td className="px-4 py-5"><StatusBadge status={status as StatusKey} /></td>
               <td className="px-4 py-5 text-slate-500">{createdDate}</td>
-              <td className="px-4 py-5"><div className="flex items-center gap-4 text-slate-500"><button onClick={onViewNotary} className="hover:text-brand-500"><Eye size={16} /></button><button className="hover:text-brand-500"><Pencil size={15} /></button><button className="hover:text-[#D14544]"><Trash2 size={15} /></button></div></td>
+              <td className="px-4 py-5"><div className="flex items-center gap-4 text-slate-500"><button onClick={onViewNotary} className="hover:text-brand-500"><Eye size={16} /></button><button className="hover:text-brand-500"><Pencil size={15} /></button><button onClick={() => handleDelete(name)} className="hover:text-[#D14544]"><Trash2 size={15} /></button></div></td>
             </tr>
           ))}
         </tbody>
       </table>
-      <Pagination footer="Showing 1 - 10 of 142 notaries" pages={["1", "2", "3", "...", "129"]} />
+      <Pagination footer={`Showing 1 to ${rows.length} of ${rows.length} notaries`} pages={["1"]} />
     </SectionCard>
   );
 }
@@ -1431,6 +1548,7 @@ function DocumentTable({ onOpenDocument, rows }: { onOpenDocument: () => void; r
 }
 
 function AddCompanyUserModal({ onClose, onSwitchType }: { onClose: () => void; onSwitchType: () => void }) {
+  const { setCompanies } = useAppContext();
   const [form, setForm] = useState({
     companyName: "",
     businessEmail: "",
@@ -1454,6 +1572,18 @@ function AddCompanyUserModal({ onClose, onSwitchType }: { onClose: () => void; o
       setError("Complete all required fields before creating the company user.");
       return;
     }
+
+    const newCompany = [
+      form.companyName.substring(0, 2).toUpperCase(),
+      "bg-[#DCE7FF] text-[#3165CF]",
+      form.companyName,
+      form.contactPerson,
+      form.businessEmail,
+      form.phone,
+      form.active ? "Active" : "Inactive",
+      "Just now"
+    ];
+    setCompanies(prev => [newCompany, ...prev]);
 
     setError("");
     onClose();
@@ -1516,6 +1646,7 @@ function AddCompanyUserModal({ onClose, onSwitchType }: { onClose: () => void; o
 }
 
 function AddNotaryModal({ onClose }: { onClose: () => void }) {
+  const { setNotaries } = useAppContext();
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -1540,6 +1671,19 @@ function AddNotaryModal({ onClose }: { onClose: () => void }) {
       setError("Complete all required fields before creating the notary user.");
       return;
     }
+
+    const newNotary = [
+      form.fullName.substring(0, 2).toUpperCase(),
+      "bg-[#DCE7FF] text-[#3165CF]",
+      form.fullName,
+      "Notary",
+      form.email,
+      form.phone,
+      form.license,
+      form.active ? "Active" : "Inactive",
+      "Just now"
+    ];
+    setNotaries(prev => [newNotary, ...prev]);
 
     setError("");
     onClose();
@@ -1611,9 +1755,15 @@ function AddNotaryModal({ onClose }: { onClose: () => void }) {
 }
 
 function AssignNotaryModal({ onClose }: { onClose: () => void }) {
+  const { setOrders } = useAppContext();
   const [query, setQuery] = useState("");
   const [selectedNotary, setSelectedNotary] = useState<string>("Sarah Jenkins");
   const visibleNotaries = assignableNotaries.filter(([name, meta]) => `${name} ${meta}`.toLowerCase().includes(query.toLowerCase()));
+
+  const handleAssign = () => {
+    setOrders((prev: any) => prev.map((o: any) => o[0] === "#ORD-90212" ? [o[0], o[1], o[2], selectedNotary, o[4], o[5], "Assigned", "jane"] : o));
+    onClose();
+  };
 
   return (
     <div className="p-6">
@@ -1660,7 +1810,7 @@ function AssignNotaryModal({ onClose }: { onClose: () => void }) {
         })}
       </div>
       <div className="mt-10 grid grid-cols-2 gap-4">
-        <button className="rounded-xl bg-brand-500 py-4 text-[16px] font-semibold text-white">Assign Notary</button>
+        <button onClick={handleAssign} className="rounded-xl bg-brand-500 py-4 text-[16px] font-semibold text-white">Assign Notary</button>
         <button onClick={onClose} className="rounded-xl bg-[#E8EDF6] py-4 text-[16px] font-semibold text-slate-600">Cancel</button>
       </div>
     </div>
@@ -1668,6 +1818,7 @@ function AssignNotaryModal({ onClose }: { onClose: () => void }) {
 }
 
 function CreateOrderModal({ onClose, onCreate }: { onClose: () => void; onCreate: () => void }) {
+  const { setOrders } = useAppContext();
   const [form, setForm] = useState({
     titleCompany: "Grand Peak Title",
     propertyAddress: "452 Pine St, San Francisco, CA 94104",
@@ -1706,6 +1857,18 @@ function CreateOrderModal({ onClose, onCreate }: { onClose: () => void; onCreate
       setError("Complete the required order information before creating the order.");
       return;
     }
+
+    const newOrder = [
+      "#ORD-" + Math.floor(Math.random() * 100000),
+      form.titleCompany,
+      form.titleCompany.substring(0, 2).toUpperCase(),
+      "Unassigned",
+      form.propertyAddress,
+      form.signingDate,
+      form.status,
+      "none"
+    ];
+    setOrders((prev: any) => [newOrder, ...prev]);
 
     setError("");
     onCreate();
@@ -1937,16 +2100,82 @@ function UsersTabs({ active, onCompanies, onNotaries, companyCount, notaryCount 
   return <div className="border-b border-[#E7EAF1]"><div className="flex gap-8"><button onClick={onCompanies} className={`relative pb-4 text-[14px] font-semibold ${active === "companies" ? "text-brand-500" : "text-slate-500"}`}>Title Companies <span className="ml-2 rounded-full bg-[#EEF3FA] px-2 py-0.5 text-[10px] text-slate-500">{companyCount}</span>{active === "companies" ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-500" /> : null}</button><button onClick={onNotaries} className={`relative pb-4 text-[14px] font-semibold ${active === "notaries" ? "text-brand-500" : "text-slate-500"}`}>Notaries <span className="ml-2 rounded-full bg-[#EEF3FA] px-2 py-0.5 text-[10px] text-slate-500">{notaryCount}</span>{active === "notaries" ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-500" /> : null}</button></div></div>;
 }
 
-function FilterBar() {
-  return <div className="flex items-center gap-4 rounded-xl bg-white px-4 py-3 shadow-sm"><div className="flex h-11 flex-1 items-center gap-3 rounded-lg bg-[#F5F8FC] px-4 text-slate-400"><Filter size={15} /><span className="text-[14px]">Filter by name, ID or city...</span></div><DropdownField label="All Status" /><DropdownField label="Sort by: Newest" /><Download size={16} className="text-slate-500" /></div>;
+function FilterBar({ 
+  searchValue = "", 
+  onSearchChange = () => {}, 
+  statusValue = "All Status", 
+  onStatusChange = () => {},
+  statusOptions = ["All Status"]
+}: { 
+  searchValue?: string; 
+  onSearchChange?: (val: string) => void; 
+  statusValue?: string; 
+  onStatusChange?: (val: string) => void;
+  statusOptions?: string[];
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-xl bg-white px-4 py-3 shadow-sm">
+      <div className="flex h-11 flex-1 items-center gap-3 rounded-lg bg-[#F5F8FC] px-4 text-slate-400">
+        <Search size={15} />
+        <input 
+          type="text"
+          value={searchValue}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Filter by name, ID or city..."
+          className="w-full bg-transparent text-[14px] text-slate-700 outline-none placeholder:text-slate-400"
+        />
+      </div>
+      <DropdownField 
+        label={statusValue} 
+        options={statusOptions} 
+        onSelect={onStatusChange} 
+      />
+      <DropdownField label="Sort by: Newest" />
+      <Download size={16} className="cursor-pointer text-slate-500 hover:text-brand-500" onClick={() => alert("Exporting report...")} />
+    </div>
+  );
 }
 
 function SearchField({ placeholder }: { placeholder: string }) {
   return <div className="flex h-11 items-center gap-3 rounded-xl border border-line bg-white px-4"><Search size={16} className="text-slate-400" /><span className="text-[14px] text-slate-400">{placeholder}</span></div>;
 }
 
-function DropdownField({ label, icon }: { label: string; icon?: ReactNode }) {
-  return <div className="flex h-11 items-center justify-between rounded-xl border border-line bg-white px-4 text-[14px] text-slate-600"><span className="flex items-center gap-2">{icon}{label}</span><ChevronDown size={16} className="text-slate-400" /></div>;
+function DropdownField({ 
+  label, 
+  options = [], 
+  onSelect = () => {}, 
+  icon 
+}: { 
+  label: string; 
+  options?: string[]; 
+  onSelect?: (val: string) => void;
+  icon?: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button 
+        onClick={() => setOpen(!open)}
+        className="flex h-11 min-w-[140px] items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 text-[14px] text-slate-600 hover:bg-slate-50"
+      >
+        <span className="flex items-center gap-2">{icon}{label}</span>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 min-w-full rounded-xl border border-line bg-white py-1 shadow-lg">
+          {options.map(opt => (
+            <button
+              key={opt}
+              onClick={() => { onSelect(opt); setOpen(false); }}
+              className={`w-full px-4 py-2 text-left text-[14px] hover:bg-slate-50 ${label === opt ? "bg-slate-50 font-semibold text-brand-500" : "text-slate-700"}`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function StatusBadge({ status }: { status: StatusKey }) {
