@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   Bell,
   Calendar,
@@ -70,6 +71,7 @@ export const AppContext = createContext<{
   setOrders: React.Dispatch<React.SetStateAction<any[]>>;
   documents: any[];
   setDocuments: React.Dispatch<React.SetStateAction<any[]>>;
+  showConfirm: (title: string, message: string, onConfirm: () => void) => void;
 } | null>(null);
 
 export const useAppContext = () => {
@@ -125,7 +127,7 @@ export default function App() {
   }
 
   return (
-    <AppContext.Provider value={{ companies, setCompanies, notaries, setNotaries, orders, setOrders, documents, setDocuments }}>
+    <AppContext.Provider value={{ companies, setCompanies, notaries, setNotaries, orders, setOrders, documents, setDocuments, showConfirm }}>
     <div className="h-full bg-canvas text-slate-800">
       <Sidebar
         activeKey={activeNav}
@@ -235,137 +237,133 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!email.trim() || !password.trim()) {
-      setError("Enter your admin email and password to continue.");
+      setError("Please enter your admin credentials.");
       return;
     }
 
-    setError("");
-    onLogin();
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setError("");
+      setIsSubmitting(false);
+      onLogin();
+    }, 850); // Premium simulated verification duration
   };
 
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top_left,_rgba(42,106,214,0.16),_transparent_34%),linear-gradient(180deg,#f7f9ff_0%,#eef3ff_100%)] px-4 py-4 text-slate-800 sm:px-6 sm:py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-[1380px] overflow-hidden rounded-[26px] border border-white/70 bg-white/85 shadow-[0_30px_100px_rgba(33,65,123,0.18)] backdrop-blur lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[1.08fr_0.92fr] lg:rounded-[34px]">
-        <section className="relative flex flex-col justify-between overflow-hidden bg-[linear-gradient(155deg,#0d4aa8_0%,#1d67d2_42%,#71a8ff_100%)] p-10 text-white">
-          <div className="absolute inset-y-10 right-10 w-[340px] rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#91c0ff]/35 blur-3xl" />
+    <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-[440px] space-y-8">
+        <div className="flex flex-col items-center">
+          <img src={closingEngageLogo} alt="Closing Engage" className="h-10 w-auto object-contain" />
+          <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold tracking-wider text-slate-600 uppercase">
+            <ShieldCheck size={12} className="text-brand-500" />
+            Operations Admin Portal
+          </div>
+        </div>
 
-          <div className="relative">
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] font-semibold tracking-[0.12em] text-white/88">
-              <ShieldCheck size={16} />
-              NOTARY ADMIN PORTAL
-            </div>
-            <img src={closingEngageLogo} alt="Closing Engage" className="mt-7 h-11 w-auto brightness-0 invert" />
-            <h1 className="mt-8 max-w-[520px] text-[38px] font-bold leading-[1.04] tracking-[-0.04em] sm:text-[44px] lg:mt-10 lg:text-[52px]">
-              Control closings, teams, and compliance from one operations hub.
-            </h1>
-            <p className="mt-5 max-w-[500px] text-[16px] leading-7 text-white/78 lg:text-[18px] lg:leading-8">
-              Built for notary administration with enterprise visibility across orders, documents, title partners, and signer activity.
+        <div className="rounded-2xl border border-slate-100 bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+          <div className="mb-6">
+            <h2 className="text-[24px] font-bold tracking-tight text-slate-900">Sign in to Admin</h2>
+            <p className="mt-2 text-[14px] text-slate-500 leading-normal">
+              Enter your authorized operational credentials to access your administrative workstation.
             </p>
           </div>
 
-          <div className="relative grid gap-4 sm:grid-cols-3">
-            {[
-              ["8,492", "Orders monitored", "Live operational volume"],
-              ["1,208", "Network notaries", "Coverage across active regions"],
-              ["99.2%", "Secure sign-ins", "Protected by admin controls"],
-            ].map(([value, label, hint]) => (
-              <div key={label} className="rounded-[24px] border border-white/16 bg-white/12 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-                <div className="text-[28px] font-bold">{value}</div>
-                <div className="mt-2 text-[14px] font-semibold">{label}</div>
-                <div className="mt-1 text-[12px] leading-5 text-white/70">{hint}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="flex items-center justify-center bg-[linear-gradient(180deg,#ffffff_0%,#f7f9fe_100%)] p-6 sm:p-8 lg:p-10">
-          <div className="w-full max-w-[500px]">
-            <div className="rounded-[30px] border border-[#E5ECF7] bg-white p-8 shadow-[0_18px_45px_rgba(27,60,118,0.09)]">
-              <div className="mb-8">
-                <div className="text-[13px] font-semibold uppercase tracking-[0.16em] text-brand-500">Welcome Back</div>
-                <h2 className="mt-3 text-[30px] font-bold tracking-[-0.03em] text-slate-900 sm:text-[34px]">Admin Login</h2>
-                <p className="mt-3 text-[15px] leading-7 text-slate-500">
-                  Sign in to manage operational settings, title-company access, notary workflows, and compliance notifications.
-                </p>
-              </div>
-
-              <form className="space-y-5" onSubmit={handleSubmit}>
-                <label className="block">
-                  <div className="mb-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-slate-500">Work Email</div>
-                  <div className="flex h-14 items-center gap-3 rounded-2xl border border-[#DCE4F2] bg-[#F8FAFF] px-4">
-                    <Mail size={18} className="text-slate-400" />
-                    <input
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      className="w-full border-0 bg-transparent text-[15px] text-slate-700 outline-none"
-                      placeholder="admin@closingengage.com"
-                      type="email"
-                    />
-                  </div>
-                </label>
-
-                <label className="block">
-                  <div className="mb-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-slate-500">Password</div>
-                  <div className="flex h-14 items-center gap-3 rounded-2xl border border-[#DCE4F2] bg-[#F8FAFF] px-4">
-                    <LockKeyhole size={18} className="text-slate-400" />
-                    <input
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      className="w-full border-0 bg-transparent text-[15px] text-slate-700 outline-none"
-                      placeholder="Enter password"
-                      type={showPassword ? "text" : "password"}
-                    />
-                    <button type="button" onClick={() => setShowPassword((current) => !current)} className="text-slate-400 transition hover:text-slate-600">
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </label>
-
-                <div className="flex items-center justify-between text-[14px]">
-                  <label className="flex items-center gap-3 text-slate-500">
-                    <button
-                      type="button"
-                      onClick={() => setRememberMe((current) => !current)}
-                      className={`flex h-5 w-5 items-center justify-center rounded border ${rememberMe ? "border-brand-500 bg-brand-500 text-white" : "border-[#C9D4E8] bg-white text-transparent"}`}
-                    >
-                      <Check size={14} strokeWidth={3} />
-                    </button>
-                    Keep me signed in
-                  </label>
-                  <button type="button" className="font-semibold text-brand-500">
-                    Forgot password?
-                  </button>
-                </div>
-
-                {error ? <div className="rounded-2xl border border-[#FFD7D4] bg-[#FFF6F5] px-4 py-3 text-[14px] text-[#C64C46]">{error}</div> : null}
-
-                <button
-                  type="submit"
-                  className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand-500 text-[15px] font-semibold text-white shadow-[0_16px_32px_rgba(29,93,195,0.24)] transition hover:bg-[#174ea7]"
-                >
-                  <ShieldCheck size={18} />
-                  Access Admin Dashboard
-                </button>
-              </form>
-
-              <div className="mt-8 rounded-[24px] border border-[#E7EDF8] bg-[#F8FAFF] px-5 py-4">
-                <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400">Session Preference</div>
-                <div className="mt-2 text-[15px] font-semibold text-slate-800">
-                  {rememberMe ? "Keep this device signed in for future admin sessions." : "Require full sign-in on this device next time."}
-                </div>
-                <p className="mt-2 text-[13px] leading-6 text-slate-500">
-                  Use this only on a trusted workstation assigned to your operations team.
-                </p>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                Work Email Address
+              </label>
+              <div className="relative flex h-12 items-center rounded-xl border border-slate-200 bg-[#fbfcfd] px-3 focus-within:border-brand-500 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-500/20 transition-all">
+                <Mail size={16} className="text-slate-400 mr-2.5" />
+                <input
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full border-0 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400"
+                  placeholder="name@closingengage.com"
+                  type="email"
+                  required
+                />
               </div>
             </div>
-          </div>
-        </section>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500">
+                  Password
+                </label>
+                <button type="button" className="text-[12px] font-semibold text-brand-500 hover:text-brand-600">
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative flex h-12 items-center rounded-xl border border-slate-200 bg-[#fbfcfd] px-3 focus-within:border-brand-500 focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-500/20 transition-all">
+                <LockKeyhole size={16} className="text-slate-400 mr-2.5" />
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="w-full border-0 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400 pr-10"
+                  placeholder="••••••••"
+                  type={showPassword ? "text" : "password"}
+                  required
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword((curr) => !curr)} 
+                  className="absolute right-3 text-slate-400 hover:text-slate-600 transition"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+              />
+              <label htmlFor="remember-me" className="ml-2.5 block text-[13px] text-slate-500 select-none cursor-pointer">
+                Keep this workstation signed in
+              </label>
+            </div>
+
+            {error && (
+              <div className="rounded-xl bg-rose-50 border border-rose-100 p-3 text-[13px] text-rose-600 font-medium">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-500 text-[14px] font-bold text-white shadow-sm hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-75 disabled:cursor-not-allowed transition-all"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Verifying Credentials...
+                </span>
+              ) : (
+                <>
+                  <ShieldCheck size={16} />
+                  Access Admin Dashboard
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        <div className="text-center text-[12px] text-slate-400 leading-relaxed px-4">
+          This dashboard is private and strictly for authorized personnel. All sign-ins and operational activities are monitored and auditable.
+        </div>
       </div>
     </div>
   );
@@ -1449,7 +1447,7 @@ function StatusTile({ label, value, tone }: { label: string; value: string; tone
 }
 
 function CompanyTable({ onViewCompany, rows }: { onViewCompany: () => void; rows: any[] }) {
-  const { setCompanies } = useAppContext();
+  const { setCompanies, showConfirm } = useAppContext();
   
   const handleDelete = (name: string) => {
     showConfirm(
@@ -1482,7 +1480,7 @@ function CompanyTable({ onViewCompany, rows }: { onViewCompany: () => void; rows
 }
 
 function NotaryTable({ onViewNotary, rows }: { onViewNotary: () => void; rows: any[] }) {
-  const { setNotaries } = useAppContext();
+  const { setNotaries, showConfirm } = useAppContext();
 
   const handleDelete = (name: string) => {
     showConfirm(
