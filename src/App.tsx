@@ -2363,13 +2363,13 @@ function Modal({ children, onClose, widthClass }: { children: ReactNode; onClose
 
 function ModalHeader({ title, subtitle, onClose }: { title: string; subtitle: string; onClose: () => void; }) {
   return (
-    <div className="flex items-start justify-between px-7 py-7">
+    <div className="flex items-start justify-between px-6 py-5 border-b border-[#edf1f7]">
       <div>
-        <h2 className="text-[32px] font-extrabold tracking-[-0.04em] text-ink-900 md:text-[38px]">{title}</h2>
-        <p className="mt-2 text-[15px] text-ink-500 md:text-[16px]">{subtitle}</p>
+        <h2 className="text-[18px] font-bold tracking-tight text-slate-900">{title}</h2>
+        <p className="mt-1 text-[13px] text-slate-500">{subtitle}</p>
       </div>
-      <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-[#f6f8fd] hover:text-ink-700">
-        <X size={20} />
+      <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+        <X size={16} />
       </button>
     </div>
   );
