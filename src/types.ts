@@ -19,3 +19,18 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
 };
+
+export type StatusKey =
+  | "Active"
+  | "Pending"
+  | "Inactive"
+  | "Approved"
+  | "Rejected"
+  | "Assigned"
+  | "Received"
+  | "Completed"
+  | "In Progress"
+  | "Verified"
+  | "Pending Review"
+  | "Under Review";
+
