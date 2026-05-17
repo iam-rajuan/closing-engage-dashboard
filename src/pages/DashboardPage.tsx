@@ -77,23 +77,6 @@ export function DashboardPage({
           <h1 className="text-[26px] font-bold leading-none text-slate-900">{greeting}, Alex</h1>
           <p className="mt-2 text-[14px] text-slate-500">{dateStr} · Real-time performance metrics for Closing Engage.</p>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={isExporting}
-          className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-5 py-3 text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(37,99,214,0.22)] transition-all hover:bg-brand-600 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none"
-        >
-          {isExporting ? (
-            <>
-              <Loader2 size={15} className="animate-spin" />
-              Exporting...
-            </>
-          ) : (
-            <>
-              <Download size={15} />
-              Export Report
-            </>
-          )}
-        </button>
       </div>
 
       {/* Metric Cards — Responsive grid with hover effects */}
@@ -117,11 +100,10 @@ export function DashboardPage({
                 <button
                   key={period}
                   onClick={() => setChartPeriod(period)}
-                  className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-all focus:outline-none ${
-                    chartPeriod === period
+                  className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-all focus:outline-none ${chartPeriod === period
                       ? "bg-white text-brand-500 shadow-sm"
                       : "text-slate-500 hover:text-slate-700"
-                  }`}
+                    }`}
                 >
                   {periodLabels[period]}
                 </button>
@@ -145,10 +127,10 @@ export function DashboardPage({
                   action.title === "Add User"
                     ? onQuickUser
                     : action.title === "Assign Orders"
-                    ? onAssignOrder
-                    : action.title === "Approve Documents"
-                    ? onApproveDocuments
-                    : () => showToast((action as any).title, { message: (action as any).description, variant: "info" })
+                      ? onAssignOrder
+                      : action.title === "Approve Documents"
+                        ? onApproveDocuments
+                        : () => showToast((action as any).title, { message: (action as any).description, variant: "info" })
                 }
                 className="quick-action-hover flex w-full items-start gap-4 rounded-xl border border-line bg-white px-4 py-4 text-left group focus:outline-none transition-all"
               >
@@ -171,7 +153,7 @@ export function DashboardPage({
   );
 }
 
-/** Enhanced Area Chart with animated gradient fill + grid lines */
+/** Enhanced Area Chart with animated gradient fill + grid lines + interactive tooltips */
 export function EnhancedChart({
   data,
   isLoading,
@@ -179,6 +161,8 @@ export function EnhancedChart({
   data: { label: string; value: number }[];
   isLoading?: boolean;
 }) {
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+
   if (!data.length) return <div className="h-[240px] flex items-center justify-center text-slate-400">No data available</div>;
 
   const maxVal = Math.max(...data.map((d) => d.value));
@@ -188,7 +172,7 @@ export function EnhancedChart({
   const width = 620;
   const height = 200;
   const padX = 30;
-  const padTop = 20;
+  const padTop = 30;
   const padBottom = 30;
   const chartH = height - padTop - padBottom;
   const chartW = width - padX * 2;
@@ -216,16 +200,34 @@ export function EnhancedChart({
   const yLabels = Array.from({ length: ySteps + 1 }, (_, i) => Math.round(minVal + (range / ySteps) * i));
 
   return (
-    <div className="relative h-[240px]">
+    <div className="relative h-[240px]" onMouseLeave={() => setHoveredPoint(null)}>
       {isLoading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px] transition-all duration-200">
+        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px] transition-all duration-200">
           <Loader2 className="animate-spin text-brand-500" size={24} />
         </div>
       )}
-      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 h-full w-full chart-gradient-fill">
+
+      {/* Dynamic Tooltip */}
+      {hoveredPoint !== null && (
+        <div
+          className="absolute z-30 pointer-events-none transition-all duration-200"
+          style={{
+            left: `${(points[hoveredPoint].x / width) * 100}%`,
+            top: `${(points[hoveredPoint].y / height) * 100}%`,
+            transform: 'translate(-50%, -150%)'
+          }}
+        >
+          <div className="relative bg-slate-900 text-white text-[12px] font-bold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 slide-in-from-bottom-2">
+            {data[hoveredPoint].value.toLocaleString()} Users
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45" />
+          </div>
+        </div>
+      )}
+
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full chart-gradient-fill group cursor-crosshair">
         <defs>
           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563D6" stopOpacity="0.15" />
+            <stop offset="0%" stopColor="#2563D6" stopOpacity="0.25" />
             <stop offset="100%" stopColor="#2563D6" stopOpacity="0.01" />
           </linearGradient>
         </defs>
@@ -234,7 +236,7 @@ export function EnhancedChart({
           const y = padTop + chartH - ((val - minVal) / range) * chartH;
           return (
             <g key={i}>
-              <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="#E5EAF3" strokeWidth="1" strokeDasharray="4 4" />
+              <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
               <text x={padX - 6} y={y + 4} textAnchor="end" className="fill-slate-400 font-semibold" fontSize="10">
                 {val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}
               </text>
@@ -242,25 +244,32 @@ export function EnhancedChart({
           );
         })}
         {/* Area fill */}
-        <path d={areaPath} fill="url(#areaGrad)" />
+        <path d={areaPath} fill="url(#areaGrad)" className="transition-all duration-500 ease-in-out opacity-0 group-hover:opacity-100" />
         {/* Line */}
         <path
           d={linePath}
           fill="none"
           stroke="#2563D6"
-          strokeWidth="2.5"
+          strokeWidth="3.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="chart-line-draw"
-          style={{ strokeDasharray: 1000, strokeDashoffset: 0 }}
+          className="transition-all duration-500 ease-in-out"
+          style={{ filter: "drop-shadow(0px 6px 8px rgba(29, 93, 195, 0.25))" }}
         />
         {/* Data points */}
         {points.map((p, i) => (
-          <g key={i}>
-            <circle cx={p.x} cy={p.y} r="4" fill="white" stroke="#2563D6" strokeWidth="2" />
-            <title>
-              {data[i].label}: {data[i].value.toLocaleString()}
-            </title>
+          <g key={i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(i)}>
+            {/* Hit area */}
+            <circle cx={p.x} cy={p.y} r="25" fill="transparent" />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={hoveredPoint === i ? "6" : "4"}
+              fill={hoveredPoint === i ? "white" : "#2563D6"}
+              stroke="#2563D6"
+              strokeWidth="2"
+              className="transition-all duration-200 ease-out"
+            />
           </g>
         ))}
       </svg>

@@ -132,33 +132,50 @@ export function MetricPanel({
   note,
   tone = "slate",
   icon: Icon,
-  compact = false,
 }: {
   title: string;
   value: string;
   note?: string;
   tone?: "blue" | "green" | "amber" | "slate";
-  icon: typeof FileText;
-  compact?: boolean;
+  icon: any; // Using any for icon component typing compatibility
 }) {
+  const iconBg =
+    tone === "blue"
+      ? "bg-[#EEF5FF] text-[#3165CF]"
+      : tone === "amber"
+      ? "bg-[#FFF8EE] text-[#D4882F]"
+      : tone === "green"
+      ? "bg-[#ECFDF5] text-[#059669]"
+      : "bg-[#F0F3F8] text-[#64748B]";
+
   return (
-    <SectionCard className={`metric-card-hover ${compact ? "min-h-[104px] p-4" : "min-h-[142px] p-5"}`}>
-      <div className="mb-4 flex items-start justify-between">
-        <IconBadge tone={tone}><Icon size={compact ? 16 : 18} /></IconBadge>
-        {note ? (
+    <div className="metric-card-hover rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)] flex flex-col justify-between h-[108px]">
+      <div className="flex items-start justify-between">
+        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon size={17} strokeWidth={1.8} />
+        </div>
+        {note && (
           note === "Alert" ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-[#FFF4E8] px-2.5 py-1 text-[10px] font-semibold text-[#D4882F]">
+            <span className="flex items-center gap-1.5 rounded-full bg-[#FFF4E8] px-2.5 py-0.5 text-[11px] font-bold text-[#D4882F]">
               <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[#D4882F]" />
               {note}
             </span>
           ) : (
-            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${tone === "amber" ? "text-[#D4882F]" : tone === "green" ? "text-[#2F9E54]" : "text-[#44B887]"}`}>{note}</span>
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+              tone === "amber" ? "bg-[#FFF4E8] text-[#D4882F]" 
+              : tone === "green" ? "bg-[#ECFDF5] text-[#059669]" 
+              : "bg-[#ECFDF5] text-[#059669]"
+            }`}>
+              {note}
+            </span>
           )
-        ) : null}
+        )}
       </div>
-      <div className={`font-medium leading-5 text-slate-500 ${compact ? "text-[11px] uppercase tracking-[0.12em]" : "text-[15px]"}`}>{title}</div>
-      <div className={`mt-2 font-bold text-slate-900 ${compact ? "text-[16px]" : "text-[18px]"}`}>{value}</div>
-    </SectionCard>
+      <div>
+        <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">{title}</div>
+        <div className="mt-1 text-[20px] font-extrabold text-slate-900 leading-none">{value}</div>
+      </div>
+    </div>
   );
 }
 
@@ -583,7 +600,7 @@ export function BarPlaceholder() {
   const maxValue = 150;
 
   return (
-    <div className="relative h-[188px] group mt-6">
+    <div className="relative h-full group mt-2">
       {/* Dynamic Tooltip */}
       {hoveredIndex !== null && (
         <div 
@@ -607,7 +624,7 @@ export function BarPlaceholder() {
         ))}
       </div>
 
-      <div className="relative z-10 flex h-[164px] items-end justify-between gap-3 px-1">
+      <div className="relative z-10 flex h-[calc(100%-24px)] items-end justify-between gap-3 px-1">
         {data.map((item, index) => (
           <div 
             key={item.label} 
@@ -653,7 +670,7 @@ export function LinePlaceholder() {
   const areaData = `${pathData} L680 186 L20 186 Z`;
 
   return (
-    <div className="relative h-[188px] w-full group mt-6" onMouseLeave={() => setHoveredPoint(null)}>
+    <div className="relative h-full w-full group mt-2" onMouseLeave={() => setHoveredPoint(null)}>
       {/* Dynamic Tooltip */}
       {hoveredPoint !== null && (
         <div 
@@ -672,7 +689,7 @@ export function LinePlaceholder() {
       )}
 
       {/* SVG Canvas */}
-      <svg viewBox="0 0 700 186" className="absolute inset-x-0 top-0 h-[160px] w-full overflow-visible z-10 cursor-crosshair">
+      <svg viewBox="0 0 700 186" preserveAspectRatio="none" className="absolute inset-x-0 top-0 h-[calc(100%-20px)] w-full overflow-visible z-10 cursor-crosshair">
         <defs>
           <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#1D5DC3" stopOpacity="0.25" />
