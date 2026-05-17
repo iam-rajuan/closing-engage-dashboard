@@ -21,6 +21,7 @@ import {
   LogOut,
   Mail,
   MapPin,
+  Menu,
   MoreVertical,
   Pencil,
   Plus,
@@ -82,7 +83,8 @@ export const useAppContext = () => {
 
 export default function App() {
   const [page, setPage] = useState<PageKey>("dashboard");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem("admin_auth") === "true");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userModalMode, setUserModalMode] = useState<UserModalMode>("company");
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -119,6 +121,7 @@ export default function App() {
     return (
       <LoginPage
         onLogin={() => {
+          localStorage.setItem("admin_auth", "true");
           setIsAuthenticated(true);
           setPage("dashboard");
         }}
@@ -129,8 +132,17 @@ export default function App() {
   return (
     <AppContext.Provider value={{ companies, setCompanies, notaries, setNotaries, orders, setOrders, documents, setDocuments, showConfirm }}>
     <div className="h-full bg-canvas text-slate-800">
+      {/* Responsive mobile backdrop */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-35 bg-slate-900/40 backdrop-blur-[2px] lg:hidden"
+        />
+      )}
       <Sidebar
         activeKey={activeNav}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
         onSelect={(key) => {
           if (key === "usersCompanies") {
             setPage("usersCompanies");
@@ -139,8 +151,14 @@ export default function App() {
           setPage(key);
         }}
       />
-      <TopNavbar onLogout={() => setIsAuthenticated(false)} />
-      <main className="ml-[220px] pt-[56px]">
+      <TopNavbar
+        onLogout={() => {
+          localStorage.removeItem("admin_auth");
+          setIsAuthenticated(false);
+        }}
+        onToggleSidebar={() => setIsSidebarOpen(true)}
+      />
+      <main className="ml-0 lg:ml-[220px] pt-[56px]">
         <div className="px-4 py-4">
           <div className="w-full max-w-none">
             {page === "dashboard" && <DashboardPage onQuickUser={() => openUserModal("company")} />}
@@ -372,14 +390,21 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
 function Sidebar({
   activeKey,
   onSelect,
+  isOpen,
+  onClose,
 }: {
   activeKey: string;
   onSelect: (key: "dashboard" | "usersCompanies" | "orders" | "documents" | "analytics" | "settings") => void;
+  isOpen: boolean;
+  onClose: () => void;
 }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 w-[220px] border-r border-slate-200 bg-white">
-      <div className="flex h-[68px] items-center border-b border-[#65b486] px-6">
+    <aside className={`fixed inset-y-0 left-0 z-40 w-[220px] border-r border-slate-200 bg-white transition-transform duration-300 ease-in-out lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <div className="flex h-[68px] items-center border-b border-[#65b486] px-6 justify-between lg:justify-start">
         <img src={closingEngageLogo} alt="Closing Engage" className="h-9 w-auto" />
+        <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-50 lg:hidden">
+          <X size={18} />
+        </button>
       </div>
       <nav className="space-y-2 px-4 py-5">
         {navItems.map((item) => {
@@ -388,7 +413,10 @@ function Sidebar({
           return (
             <button
               key={item.key}
-              onClick={() => onSelect(item.key)}
+              onClick={() => {
+                onSelect(item.key);
+                onClose();
+              }}
               className={`flex min-h-[52px] w-full items-center gap-3 rounded-xl px-4 text-left text-[15px] font-medium transition ${
                 isActive ? "bg-[#EEF5FF] text-brand-500 shadow-[inset_0_0_0_1px_rgba(29,93,195,0.06)]" : "text-slate-700 hover:bg-slate-50"
               }`}
@@ -404,13 +432,21 @@ function Sidebar({
   );
 }
 
-function TopNavbar({ onLogout }: { onLogout: () => void }) {
+function TopNavbar({ onLogout, onToggleSidebar }: { onLogout: () => void; onToggleSidebar: () => void; }) {
   return (
-    <header className="fixed left-[220px] right-0 top-0 z-20 h-[56px] border-b border-slate-200 bg-white">
+    <header className="fixed left-0 lg:left-[220px] right-0 top-0 z-20 h-[56px] border-b border-slate-200 bg-white">
       <div className="flex h-full items-center justify-between px-6">
-        <div className="flex h-10 w-[380px] items-center gap-2 rounded-xl bg-[#F5F7FB] px-4 text-slate-400">
-          <Search size={15} />
-          <span className="text-[13px]">Search orders, notaries, or documents...</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onToggleSidebar}
+            className="mr-2 rounded-lg p-1.5 text-slate-500 hover:bg-slate-50 lg:hidden"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="hidden sm:flex h-10 w-[380px] items-center gap-2 rounded-xl bg-[#F5F7FB] px-4 text-slate-400">
+            <Search size={15} />
+            <span className="text-[13px]">Search orders, notaries, or documents...</span>
+          </div>
         </div>
         <div className="flex items-center gap-6">
           <Bell size={18} className="text-slate-700" />
