@@ -11,7 +11,8 @@ export type PageKey =
   | "documents"
   | "documentView"
   | "analytics"
-  | "settings";
+  | "settings"
+  | "notifications";
 
 export type NavItem = {
   key: "dashboard" | "usersCompanies" | "orders" | "documents" | "analytics" | "settings";

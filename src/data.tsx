@@ -37,6 +37,7 @@ export const pageGroups: Record<PageKey, NavItem["key"]> = {
   documentView: "documents",
   analytics: "analytics",
   settings: "settings",
+  notifications: "settings",
 };
 
 export type MetricCard = {

@@ -30,9 +30,11 @@ import {
   Save,
   Search,
   ShieldCheck,
+  Settings,
   Smartphone,
   Trash2,
   Upload,
+  User,
   UserPlus,
   X,
 } from "lucide-react";
@@ -165,8 +167,10 @@ export default function App() {
           setIsAuthenticated(false);
         }}
         onToggleSidebar={() => setIsSidebarOpen(true)}
+        onGoToSettings={() => setPage("settings")}
+        onViewAllNotifications={() => setPage("notifications")}
       />
-      <main className="ml-0 lg:ml-[220px] pt-[56px]">
+      <main className="ml-0 lg:ml-[220px] pt-[68px]">
         <div className="px-4 py-4">
           <div className="w-full max-w-none">
             {page === "dashboard" && (
@@ -210,6 +214,7 @@ export default function App() {
             {page === "documentView" && <DocumentViewPage onBack={() => setPage("documents")} />}
             {page === "analytics" && <AnalyticsPage />}
             {page === "settings" && <SettingsPage />}
+            {page === "notifications" && <NotificationsPage />}
           </div>
         </div>
       </main>
@@ -427,7 +432,7 @@ function Sidebar({
 }) {
   return (
     <aside className={`fixed inset-y-0 left-0 z-40 w-[220px] border-r border-slate-200 bg-white transition-transform duration-300 ease-in-out lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
-      <div className="flex h-[68px] items-center border-b border-[#65b486] px-6 justify-between lg:justify-start">
+      <div className="flex h-[68px] items-center border-b border-slate-200 px-6 justify-between lg:justify-start">
         <img src={closingEngageLogo} alt="Closing Engage" className="h-9 w-auto" />
         <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-50 lg:hidden">
           <X size={18} />
@@ -459,13 +464,25 @@ function Sidebar({
   );
 }
 
-function TopNavbar({ onLogout, onToggleSidebar }: { onLogout: () => void; onToggleSidebar: () => void; }) {
+function TopNavbar({ 
+  onLogout, 
+  onToggleSidebar, 
+  onGoToSettings,
+  onViewAllNotifications
+}: { 
+  onLogout: () => void; 
+  onToggleSidebar: () => void; 
+  onGoToSettings: () => void; 
+  onViewAllNotifications: () => void;
+}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const { notifications, unreadCount, markRead, markAllRead } = useDashboardData();
 
@@ -474,6 +491,7 @@ function TopNavbar({ onLogout, onToggleSidebar }: { onLogout: () => void; onTogg
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -498,7 +516,7 @@ function TopNavbar({ onLogout, onToggleSidebar }: { onLogout: () => void; onTogg
   };
 
   return (
-    <header className="fixed left-0 lg:left-[220px] right-0 top-0 z-20 h-[56px] border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+    <header className="fixed left-0 lg:left-[220px] right-0 top-0 z-20 h-[68px] border-b border-slate-200 bg-white/95 backdrop-blur-sm">
       <div className="flex h-full items-center justify-between px-6">
         <div className="flex items-center gap-2">
           <button
@@ -589,25 +607,66 @@ function TopNavbar({ onLogout, onToggleSidebar }: { onLogout: () => void; onTogg
                   ))}
                 </div>
                 <div className="border-t border-line px-5 py-3 text-center">
-                  <button className="text-[13px] font-semibold text-brand-500 hover:text-brand-600">View All Notifications</button>
+                  <button
+                    onClick={() => {
+                      setNotifOpen(false);
+                      onViewAllNotifications();
+                    }}
+                    className="text-[13px] font-semibold text-brand-500 hover:text-brand-600 w-full"
+                  >
+                    View All Notifications
+                  </button>
                 </div>
               </div>
             )}
           </div>
           <div className="h-7 w-px bg-slate-200" />
-          <button
-            onClick={onLogout}
-            className="inline-flex items-center gap-2 rounded-full bg-[#F4F7FD] px-3 py-2 text-[12px] font-semibold text-slate-500 transition hover:text-slate-700"
-          >
-            <LogOut size={14} />
-            Sign Out
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="text-right leading-tight">
-              <div className="text-[12px] font-semibold text-slate-800">Alex Sterling</div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Admin</div>
-            </div>
-            <Avatar className="h-8 w-8" gradient={profileGradients.mark} />
+          <div ref={profileRef} className="relative">
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              className="flex items-center gap-3 rounded-xl p-1.5 transition hover:bg-slate-50 text-left focus:outline-none"
+            >
+              <div className="text-right leading-tight hidden md:block">
+                <div className="text-[13px] font-semibold text-slate-800">Alex Sterling</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Admin</div>
+              </div>
+              <Avatar className="h-8 w-8" gradient={profileGradients.mark} />
+            </button>
+
+            {profileOpen && (
+              <div className="profile-dropdown absolute right-0 top-full z-50 mt-2 w-[220px] overflow-hidden rounded-2xl border border-[#e2e8f3] bg-white py-2 shadow-[0_20px_60px_rgba(15,23,42,0.15)] animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="border-b border-slate-100 px-4 py-3">
+                  <p className="text-[13px] font-bold text-slate-800">Alex Sterling</p>
+                  <p className="text-[11px] text-slate-400 truncate">alex.sterling@closingengage.com</p>
+                </div>
+
+                <div className="px-1.5 py-1.5 space-y-0.5">
+                  <button
+                    onClick={() => {
+                      onGoToSettings();
+                      setProfileOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    <User size={15} className="text-slate-400" />
+                    My Profile
+                  </button>
+                </div>
+
+                <div className="border-t border-slate-100 px-1.5 pt-1.5 pb-0.5">
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      onLogout();
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-semibold text-red-600 hover:bg-red-50/50 transition"
+                  >
+                    <LogOut size={15} className="text-red-500" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1595,6 +1654,121 @@ function AnalyticsPage() {
           <MetricStrip title="Pending Approval" value="1.2k" />
           <MetricStrip title="Approval Rate" value="94.2%" dot />
           <PrimaryButton><Download size={15} />Export Report</PrimaryButton>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function NotificationsPage() {
+  const { notifications, markRead, markAllRead, refetch } = useDashboardData();
+  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const { showToast } = useToast();
+
+  const handleMarkRead = async (id: string) => {
+    await markRead(id);
+    showToast("Notification marked as read", { variant: "success" });
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllRead();
+    showToast("All notifications marked as read", { variant: "success" });
+  };
+
+  const filteredNotifs = notifications.filter((n) => {
+    if (filter === "unread") return !n.read;
+    return true;
+  });
+
+  const getIcon = (title: string) => {
+    const t = title.toLowerCase();
+    if (t.includes("order")) return <ClipboardList className="text-blue-500" size={18} />;
+    if (t.includes("document") || t.includes("file")) return <FileText className="text-emerald-500" size={18} />;
+    if (t.includes("notary") || t.includes("verified")) return <ShieldCheck className="text-purple-500" size={18} />;
+    return <Bell className="text-slate-500" size={18} />;
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-[26px] font-bold leading-none text-slate-900">Notifications</h1>
+          <p className="mt-2 text-[14px] text-slate-500">View and manage all system activities, escrow updates, and compliance logs.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {notifications.some((n) => !n.read) && (
+            <GhostButton onClick={handleMarkAllRead} className="px-4 py-2.5">
+              Mark all read
+            </GhostButton>
+          )}
+          <PrimaryButton onClick={refetch}>
+            Refresh logs
+          </PrimaryButton>
+        </div>
+      </div>
+
+      <SectionCard className="p-0 overflow-hidden">
+        {/* Filters bar */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
+          <div className="flex gap-4">
+            <button
+              onClick={() => setFilter("all")}
+              className={`pb-1 text-[13px] font-bold border-b-2 transition ${filter === "all" ? "border-brand-500 text-brand-500" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+            >
+              All Activity ({notifications.length})
+            </button>
+            <button
+              onClick={() => setFilter("unread")}
+              className={`pb-1 text-[13px] font-bold border-b-2 transition ${filter === "unread" ? "border-brand-500 text-brand-500" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+            >
+              Unread ({notifications.filter((n) => !n.read).length})
+            </button>
+          </div>
+        </div>
+
+        {/* List of notifications */}
+        <div className="divide-y divide-slate-100">
+          {filteredNotifs.length > 0 ? (
+            filteredNotifs.map((n) => (
+              <div
+                key={n.id}
+                className={`flex items-start justify-between p-6 transition hover:bg-slate-50/50 ${!n.read ? "bg-[#f5f9ff]/40" : ""}`}
+              >
+                <div className="flex gap-4 min-w-0">
+                  <div className={`mt-1 flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm border border-slate-100`}>
+                    {getIcon(n.title)}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-[14px] font-bold text-slate-800">{n.title}</h4>
+                      {!n.read && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+                      )}
+                    </div>
+                    <p className="mt-1 text-[13px] leading-relaxed text-slate-600 max-w-[700px]">{n.message}</p>
+                    <span className="mt-2 block text-[11px] font-medium text-slate-400">{n.time}</span>
+                  </div>
+                </div>
+
+                {!n.read && (
+                  <GhostButton
+                    onClick={() => handleMarkRead(n.id)}
+                    className="shrink-0 px-3 py-1.5 text-[11px] font-bold text-brand-500 hover:bg-brand-50"
+                  >
+                    Mark read
+                  </GhostButton>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 mb-3">
+                <Bell size={22} />
+              </div>
+              <h3 className="text-[15px] font-bold text-slate-800">All caught up!</h3>
+              <p className="mt-1 text-[13px] text-slate-500">You don't have any notifications matching this filter.</p>
+            </div>
+          )}
         </div>
       </SectionCard>
     </div>
