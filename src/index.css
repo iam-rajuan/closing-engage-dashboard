@@ -14,6 +14,8 @@ body {
   background: #f7f8ff;
   color: #1f2937;
   font-family: Inter, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
@@ -22,9 +24,32 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
+
+/* ── Scrollbar ──────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5e0;
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8b0c0;
+}
+
+/* ── Tailwind Components ────────────────────────────── */
 
 @layer components {
   .panel {
@@ -37,5 +62,160 @@ select {
 
   .table-head {
     @apply bg-[#EEF3FA] text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500;
+  }
+}
+
+/* ── Skeleton Shimmer ───────────────────────────────── */
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #eef3fa 25%,
+    #dfe6f2 37%,
+    #eef3fa 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.6s ease infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* ── Toast Animations ───────────────────────────────── */
+
+.toast-slide-in {
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.toast-progress {
+  animation: toastProgress linear forwards;
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* ── Alert Pulse ────────────────────────────────────── */
+
+.pulse-dot {
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.6);
+  }
+}
+
+/* ── Metric Card Hover ──────────────────────────────── */
+
+.metric-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+/* ── Quick Action Hover ─────────────────────────────── */
+
+.quick-action-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.quick-action-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  border-color: #c4d5ef;
+}
+
+/* ── Chart Area Gradient ────────────────────────────── */
+
+.chart-gradient-fill {
+  animation: chartFadeIn 0.8s ease forwards;
+}
+
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.chart-line-draw {
+  animation: chartLineDraw 1.2s ease forwards;
+}
+
+@keyframes chartLineDraw {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ── Notification Dropdown ──────────────────────────── */
+
+.notification-dropdown {
+  animation: notifDropdown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes notifDropdown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Search Results Dropdown ────────────────────────── */
+
+.search-dropdown {
+  animation: searchDropdown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes searchDropdown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

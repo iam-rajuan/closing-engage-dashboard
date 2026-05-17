@@ -1,0 +1,114 @@
+import { useCallback, useEffect, useState } from "react";
+import type { MetricCard } from "../data";
+import {
+  fetchDashboardMetrics,
+  fetchActiveUsersTrend,
+  fetchNotifications,
+  type ChartDataPoint,
+  type NotificationItem,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "../api/dashboardService";
+
+interface DashboardState {
+  metrics: MetricCard[];
+  chartData: ChartDataPoint[];
+  notifications: NotificationItem[];
+  isLoading: boolean;
+  isChartLoading: boolean;
+  error: string | null;
+}
+
+export function useDashboardData() {
+  const [state, setState] = useState<DashboardState>({
+    metrics: [],
+    chartData: [],
+    notifications: [],
+    isLoading: true,
+    isChartLoading: false,
+    error: null,
+  });
+
+  const [chartPeriod, setChartPeriod] = useState<"7d" | "30d" | "90d">("30d");
+
+  // Fetch all initial data once on mount
+  const fetchAll = useCallback(async () => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const [metrics, chartData, notifications] = await Promise.all([
+        fetchDashboardMetrics(),
+        fetchActiveUsersTrend(chartPeriod),
+        fetchNotifications(),
+      ]);
+      setState({ metrics, chartData, notifications, isLoading: false, isChartLoading: false, error: null });
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: err instanceof Error ? err.message : "Failed to load dashboard data",
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  // Fetch chart data specifically when period changes (excluding initial load where fetchAll handles it)
+  useEffect(() => {
+    let active = true;
+
+    // Skip if page is already doing a full mount load
+    if (state.isLoading) return;
+
+    const updateChart = async () => {
+      setState((prev) => ({ ...prev, isChartLoading: true }));
+      try {
+        const chartData = await fetchActiveUsersTrend(chartPeriod);
+        if (active) {
+          setState((prev) => ({ ...prev, chartData, isChartLoading: false }));
+        }
+      } catch {
+        if (active) {
+          setState((prev) => ({ ...prev, isChartLoading: false }));
+        }
+      }
+    };
+
+    updateChart();
+
+    return () => {
+      active = false;
+    };
+  }, [chartPeriod]);
+
+  const handleMarkRead = async (id: string) => {
+    await markNotificationRead(id);
+    setState((prev) => ({
+      ...prev,
+      notifications: prev.notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      ),
+    }));
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllNotificationsRead();
+    setState((prev) => ({
+      ...prev,
+      notifications: prev.notifications.map((n) => ({ ...n, read: true })),
+    }));
+  };
+
+  const unreadCount = state.notifications.filter((n) => !n.read).length;
+
+  return {
+    ...state,
+    chartPeriod,
+    setChartPeriod,
+    unreadCount,
+    markRead: handleMarkRead,
+    markAllRead: handleMarkAllRead,
+    refetch: fetchAll,
+  };
+}

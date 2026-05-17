@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   AlertTriangle,
@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Circle,
+  ClipboardList,
   Download,
   Eye,
   EyeOff,
@@ -17,6 +18,7 @@ import {
   Filter,
   Globe,
   Link2,
+  Loader2,
   LockKeyhole,
   LogOut,
   Mail,
@@ -57,6 +59,10 @@ import {
 } from "./data";
 import type { PageKey } from "./types";
 import closingEngageLogo from "./assets/closing-engage-logo.svg";
+import { ToastProvider, useToast } from "./components/Toast";
+import { MetricsRowSkeleton, ChartSkeleton, QuickActionSkeleton } from "./components/Skeleton";
+import { useDashboardData } from "./hooks/useDashboardData";
+import { exportDashboardReport, globalSearch, type NotificationItem, type SearchResult } from "./api/dashboardService";
 
 type UserModalMode = "company" | "notary";
 type StatusKey = keyof typeof statusConfig;
@@ -89,6 +95,7 @@ export default function App() {
   const [userModalMode, setUserModalMode] = useState<UserModalMode>("company");
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [createOrderModalOpen, setCreateOrderModalOpen] = useState(false);
+  const [ordersInitialFilter, setOrdersInitialFilter] = useState("All Orders");
   const activeNav = useMemo(() => pageGroups[page], [page]);
 
   const [companies, setCompanies] = useState<any[]>([...initialCompanyRows]);
@@ -130,6 +137,7 @@ export default function App() {
   }
 
   return (
+    <ToastProvider>
     <AppContext.Provider value={{ companies, setCompanies, notaries, setNotaries, orders, setOrders, documents, setDocuments, showConfirm }}>
     <div className="h-full bg-canvas text-slate-800">
       {/* Responsive mobile backdrop */}
@@ -161,7 +169,19 @@ export default function App() {
       <main className="ml-0 lg:ml-[220px] pt-[56px]">
         <div className="px-4 py-4">
           <div className="w-full max-w-none">
-            {page === "dashboard" && <DashboardPage onQuickUser={() => openUserModal("company")} />}
+            {page === "dashboard" && (
+              <DashboardPage
+                onQuickUser={() => openUserModal("company")}
+                onAssignOrder={() => {
+                  setOrdersInitialFilter("Received");
+                  setPage("orders");
+                }}
+                onApproveDocuments={() => {
+                  setOrdersInitialFilter("Under Review");
+                  setPage("orders");
+                }}
+              />
+            )}
             {page === "usersCompanies" && (
               <UsersCompaniesPage
                 onAddUser={() => openUserModal("company")}
@@ -178,7 +198,13 @@ export default function App() {
             )}
             {page === "companyDetails" && <CompanyDetailsPage />}
             {page === "notaryProfile" && <NotaryProfilePage />}
-            {page === "orders" && <OrdersPage onOpenOrder={() => setPage("orderDetails")} onCreateOrder={() => setCreateOrderModalOpen(true)} />}
+            {page === "orders" && (
+              <OrdersPage
+                initialFilter={ordersInitialFilter}
+                onOpenOrder={() => setPage("orderDetails")}
+                onCreateOrder={() => setCreateOrderModalOpen(true)}
+              />
+            )}
             {page === "orderDetails" && <OrderDetailsPage onBack={() => setPage("orders")} onAssign={() => setAssignModalOpen(true)} />}
             {page === "documents" && <DocumentsPage onOpenDocument={() => setPage("documentView")} />}
             {page === "documentView" && <DocumentViewPage onBack={() => setPage("documents")} />}
@@ -246,6 +272,7 @@ export default function App() {
       ) : null}
     </div>
     </AppContext.Provider>
+    </ToastProvider>
   );
 }
 
@@ -433,8 +460,45 @@ function Sidebar({
 }
 
 function TopNavbar({ onLogout, onToggleSidebar }: { onLogout: () => void; onToggleSidebar: () => void; }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const { notifications, unreadCount, markRead, markAllRead } = useDashboardData();
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    const timer = setTimeout(async () => {
+      const results = await globalSearch(searchQuery);
+      setSearchResults(results);
+      setSearchOpen(true);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const typeIcons: Record<string, string> = {
+    order: "📋",
+    notary: "👤",
+    document: "📄",
+    company: "🏢",
+  };
+
   return (
-    <header className="fixed left-0 lg:left-[220px] right-0 top-0 z-20 h-[56px] border-b border-slate-200 bg-white">
+    <header className="fixed left-0 lg:left-[220px] right-0 top-0 z-20 h-[56px] border-b border-slate-200 bg-white/95 backdrop-blur-sm">
       <div className="flex h-full items-center justify-between px-6">
         <div className="flex items-center gap-2">
           <button
@@ -443,13 +507,93 @@ function TopNavbar({ onLogout, onToggleSidebar }: { onLogout: () => void; onTogg
           >
             <Menu size={20} />
           </button>
-          <div className="hidden sm:flex h-10 w-[380px] items-center gap-2 rounded-xl bg-[#F5F7FB] px-4 text-slate-400">
-            <Search size={15} />
-            <span className="text-[13px]">Search orders, notaries, or documents...</span>
+          {/* Functional Search Bar */}
+          <div ref={searchRef} className="relative hidden sm:block">
+            <div className="flex h-10 w-[380px] items-center gap-2 rounded-xl bg-[#F5F7FB] px-4 text-slate-400 transition-all focus-within:bg-white focus-within:ring-1 focus-within:ring-brand-500/20 focus-within:shadow-sm">
+              <Search size={15} />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+                className="w-full border-0 bg-transparent text-[13px] text-slate-700 outline-none placeholder:text-slate-400"
+                placeholder="Search orders, notaries, or documents..."
+              />
+              {searchQuery && (
+                <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSearchOpen(false); }} className="text-slate-400 hover:text-slate-600">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            {/* Search Results Dropdown */}
+            {searchOpen && searchResults.length > 0 && (
+              <div className="search-dropdown absolute top-full left-0 z-50 mt-2 w-full overflow-hidden rounded-2xl border border-[#e2e8f3] bg-white py-2 shadow-[0_16px_48px_rgba(15,23,42,0.14)]">
+                <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                  {searchResults.length} results
+                </div>
+                {searchResults.map((r) => (
+                  <button
+                    key={r.id}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-[#f5f8fd]"
+                    onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                  >
+                    <span className="text-[14px]">{typeIcons[r.type]}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-semibold text-slate-800">{r.title}</div>
+                      <div className="truncate text-[12px] text-slate-500">{r.subtitle}</div>
+                    </div>
+                    <span className="shrink-0 rounded-md bg-[#EEF3FA] px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-500">{r.type}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <Bell size={18} className="text-slate-700" />
+        <div className="flex items-center gap-5">
+          {/* Notification Bell */}
+          <div ref={notifRef} className="relative">
+            <button
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-50"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#ef4444] px-1 text-[10px] font-bold text-white shadow-sm">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            {notifOpen && (
+              <div className="notification-dropdown absolute right-0 top-full z-50 mt-2 w-[380px] overflow-hidden rounded-2xl border border-[#e2e8f3] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.15)]">
+                <div className="flex items-center justify-between border-b border-line px-5 py-4">
+                  <h3 className="text-[15px] font-semibold text-slate-800">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} className="text-[12px] font-semibold text-brand-500 hover:text-brand-600">
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-[360px] overflow-y-auto">
+                  {notifications.map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => markRead(n.id)}
+                      className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition hover:bg-[#f8fafd] ${!n.read ? "bg-[#f5f9ff]" : ""}`}
+                    >
+                      <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${!n.read ? "bg-brand-500" : "bg-transparent"}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-semibold text-slate-800">{n.title}</div>
+                        <div className="mt-0.5 text-[12px] leading-5 text-slate-500">{n.message}</div>
+                        <div className="mt-1 text-[11px] text-slate-400">{n.time}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-line px-5 py-3 text-center">
+                  <button className="text-[13px] font-semibold text-brand-500 hover:text-brand-600">View All Notifications</button>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="h-7 w-px bg-slate-200" />
           <button
             onClick={onLogout}
@@ -471,61 +615,236 @@ function TopNavbar({ onLogout, onToggleSidebar }: { onLogout: () => void; onTogg
   );
 }
 
-function DashboardPage({ onQuickUser }: { onQuickUser: () => void }) {
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="System Overview"
-        description="Real-time performance metrics for Closing Engage ecosystem."
-        action={
-          <PrimaryButton>
-            <Download size={15} />
-            Export Report
-          </PrimaryButton>
-        }
-      />
+function DashboardPage({ 
+  onQuickUser,
+  onAssignOrder,
+  onApproveDocuments,
+}: { 
+  onQuickUser: () => void;
+  onAssignOrder: () => void;
+  onApproveDocuments: () => void;
+}) {
+  const { metrics, chartData, isLoading, isChartLoading, chartPeriod, setChartPeriod } = useDashboardData();
+  const { showToast } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
 
-      <div className="grid grid-cols-5 gap-4">
-        {dashboardMetrics.map((metric) => (
+  // Time-aware greeting
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
+  const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportDashboardReport("pdf");
+      if (result.success) {
+        showToast("Report exported successfully", { message: result.fileName, variant: "success" });
+      }
+    } catch {
+      showToast("Export failed", { message: "Please try again later.", variant: "error" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const periodLabels: Record<string, string> = { "7d": "Last 7 days", "30d": "Last 30 days", "90d": "Last 90 days" };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-5">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <div className="skeleton-shimmer h-7 w-56 rounded-lg" />
+            <div className="skeleton-shimmer h-4 w-80 rounded-lg" />
+          </div>
+          <div className="skeleton-shimmer h-11 w-36 rounded-lg" />
+        </div>
+        <MetricsRowSkeleton />
+        <div className="grid grid-cols-1 lg:grid-cols-[2.1fr_0.95fr] gap-4">
+          <ChartSkeleton />
+          <QuickActionSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Header with greeting */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-[26px] font-bold leading-none text-slate-900">{greeting}, Alex</h1>
+          <p className="mt-2 text-[14px] text-slate-500">{dateStr} · Real-time performance metrics for Closing Engage.</p>
+        </div>
+        <button
+          onClick={handleExport}
+          disabled={isExporting}
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-5 py-3 text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(37,99,214,0.22)] transition-all hover:bg-brand-600 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          {isExporting ? (
+            <>
+              <Loader2 size={15} className="animate-spin" />
+              Exporting...
+            </>
+          ) : (
+            <>
+              <Download size={15} />
+              Export Report
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Metric Cards — Responsive grid with hover effects */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {metrics.map((metric) => (
           <MetricPanel key={metric.title} {...metric} />
         ))}
       </div>
 
-      <div className="grid grid-cols-[2.1fr_0.95fr] gap-4">
+      {/* Chart + Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2.1fr_0.95fr] gap-4">
+        {/* Active Users Trend */}
         <SectionCard className="p-5">
-          <div className="mb-8 flex items-start justify-between">
+          <div className="mb-6 flex items-start justify-between">
             <div>
               <h3 className="text-[18px] font-semibold text-slate-800">Active Users Trend</h3>
-              <p className="text-[13px] text-slate-500">Daily unique engagement across the portal</p>
+              <p className="mt-1 text-[13px] text-slate-500">Daily unique engagement across the portal</p>
             </div>
-            <div className="rounded-md bg-[#EFF3FA] px-4 py-2 text-[12px] font-semibold text-slate-600">Last 30 days</div>
+            <div className="flex gap-1 rounded-lg bg-[#EFF3FA] p-1">
+              {(["7d", "30d", "90d"] as const).map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setChartPeriod(period)}
+                  className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-all ${chartPeriod === period ? "bg-white text-brand-500 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  {periodLabels[period]}
+                </button>
+              ))}
+            </div>
           </div>
-          <ChartPlaceholder />
+          <EnhancedChart data={chartData} isLoading={isChartLoading} />
         </SectionCard>
 
+        {/* Quick Actions */}
         <SectionCard className="p-5">
-          <div className="mb-6">
+          <div className="mb-5">
             <h3 className="text-[18px] font-semibold text-slate-800">Quick Actions</h3>
-            <p className="text-[13px] text-slate-500">Frequent administrative tasks</p>
+            <p className="mt-1 text-[13px] text-slate-500">Frequent administrative tasks</p>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {quickActions.map((action) => (
               <button
                 key={action.title}
-                onClick={action.title === "Add User" ? onQuickUser : undefined}
-                className="flex w-full items-start gap-4 rounded-xl border border-line bg-white px-4 py-4 text-left"
+                onClick={
+                  action.title === "Add User"
+                    ? onQuickUser
+                    : action.title === "Assign Orders"
+                    ? onAssignOrder
+                    : action.title === "Approve Documents"
+                    ? onApproveDocuments
+                    : () => showToast((action as any).title, { message: (action as any).description, variant: "info" })
+                }
+                className="quick-action-hover flex w-full items-start gap-4 rounded-xl border border-line bg-white px-4 py-4 text-left group"
               >
                 <IconBadge tone={action.tone}>
                   <action.icon size={18} />
                 </IconBadge>
-                <div>
-                  <div className="text-[16px] font-semibold text-slate-800">{action.title}</div>
+                <div className="flex-1">
+                  <div className="text-[15px] font-semibold text-slate-800 group-hover:text-brand-500 transition-colors">{action.title}</div>
                   <div className="max-w-[190px] text-[13px] leading-5 text-slate-500">{action.description}</div>
                 </div>
+                <ChevronRight size={16} className="mt-1 text-slate-300 group-hover:text-brand-400 transition-colors" />
               </button>
             ))}
           </div>
         </SectionCard>
+      </div>
+    </div>
+  );
+}
+
+/** Enhanced Area Chart with animated gradient fill + grid lines */
+function EnhancedChart({ data, isLoading }: { data: { label: string; value: number }[]; isLoading?: boolean }) {
+  if (!data.length) return <div className="h-[240px] flex items-center justify-center text-slate-400">No data available</div>;
+
+  const maxVal = Math.max(...data.map((d) => d.value));
+  const minVal = Math.min(...data.map((d) => d.value));
+  const range = maxVal - minVal || 1;
+
+  const width = 620;
+  const height = 200;
+  const padX = 30;
+  const padTop = 20;
+  const padBottom = 30;
+  const chartH = height - padTop - padBottom;
+  const chartW = width - padX * 2;
+
+  const points = data.map((d, i) => ({
+    x: padX + (i / (data.length - 1)) * chartW,
+    y: padTop + chartH - ((d.value - minVal) / range) * chartH,
+  }));
+
+  // Create smooth cubic bezier path
+  const linePath = points
+    .map((p, i) => {
+      if (i === 0) return `M${p.x},${p.y}`;
+      const prev = points[i - 1];
+      const cpx1 = prev.x + (p.x - prev.x) * 0.4;
+      const cpx2 = p.x - (p.x - prev.x) * 0.4;
+      return `C${cpx1},${prev.y} ${cpx2},${p.y} ${p.x},${p.y}`;
+    })
+    .join(" ");
+
+  const areaPath = `${linePath} L${points[points.length - 1].x},${height - padBottom} L${points[0].x},${height - padBottom} Z`;
+
+  // Y-axis labels
+  const ySteps = 4;
+  const yLabels = Array.from({ length: ySteps + 1 }, (_, i) => Math.round(minVal + (range / ySteps) * i));
+
+  return (
+    <div className="relative h-[240px]">
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px] transition-all duration-200">
+          <Loader2 className="animate-spin text-brand-500" size={24} />
+        </div>
+      )}
+      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 h-full w-full chart-gradient-fill">
+        <defs>
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563D6" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#2563D6" stopOpacity="0.01" />
+          </linearGradient>
+        </defs>
+        {/* Grid lines */}
+        {yLabels.map((val, i) => {
+          const y = padTop + chartH - ((val - minVal) / range) * chartH;
+          return (
+            <g key={i}>
+              <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="#E5EAF3" strokeWidth="1" strokeDasharray="4 4" />
+              <text x={padX - 6} y={y + 4} textAnchor="end" className="fill-slate-400" fontSize="10" fontWeight="500">
+                {val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}
+              </text>
+            </g>
+          );
+        })}
+        {/* Area fill */}
+        <path d={areaPath} fill="url(#areaGrad)" />
+        {/* Line */}
+        <path d={linePath} fill="none" stroke="#2563D6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-draw" style={{ strokeDasharray: 1000, strokeDashoffset: 0 }} />
+        {/* Data points */}
+        {points.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="4" fill="white" stroke="#2563D6" strokeWidth="2" />
+            <title>{data[i].label}: {data[i].value.toLocaleString()}</title>
+          </g>
+        ))}
+      </svg>
+      {/* X-axis labels */}
+      <div className="absolute bottom-0 left-[30px] right-[30px] flex justify-between">
+        {data.map((d) => (
+          <span key={d.label} className="text-[11px] font-semibold text-slate-400">{d.label}</span>
+        ))}
       </div>
     </div>
   );
@@ -819,11 +1138,23 @@ function NotaryProfilePage() {
   );
 }
 
-function OrdersPage({ onOpenOrder, onCreateOrder }: { onOpenOrder: () => void; onCreateOrder: () => void }) {
+function OrdersPage({ 
+  onOpenOrder, 
+  onCreateOrder, 
+  initialFilter = "All Orders" 
+}: { 
+  onOpenOrder: () => void; 
+  onCreateOrder: () => void; 
+  initialFilter?: string;
+}) {
   const { orders: orderRows } = useAppContext();
-  const [activeFilter, setActiveFilter] = useState("All Orders");
+  const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
+
+  useEffect(() => {
+    setActiveFilter(initialFilter);
+  }, [initialFilter]);
 
   const filters = ["All Orders", "Received", "Assigned", "Under Review", "Approved", "Completed"];
 
@@ -1673,9 +2004,9 @@ function AddCompanyUserModal({ onClose, onSwitchType }: { onClose: () => void; o
   };
 
   return (
-    <div>
+    <div className="flex flex-col max-h-[88vh]">
       <ModalHeader title="Add New User" subtitle="Create a new user account" onClose={onClose} />
-      <div className="space-y-7 px-5 py-5">
+      <div className="flex-1 overflow-y-auto space-y-7 px-5 py-5">
         <div>
           <div className="mb-3 text-[14px] font-semibold text-slate-600">User Type Selection</div>
           <div className="inline-flex rounded-xl bg-[#EDF1F7] p-1">
@@ -1773,9 +2104,9 @@ function AddNotaryModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div>
+    <div className="flex flex-col max-h-[88vh]">
       <ModalHeader title="Add Notary" subtitle="Create a new notary account" onClose={onClose} />
-      <div className="space-y-7 px-5 py-5">
+      <div className="flex-1 overflow-y-auto space-y-7 px-5 py-5">
         <div>
           <ModalSectionTitle title="Personal Information" />
           <div className="mt-5 grid grid-cols-2 gap-5">
@@ -2145,10 +2476,19 @@ function PageHeader({ title, description, action }: { title: string; description
 
 function MetricPanel({ title, value, note, tone = "slate", icon: Icon, compact = false }: { title: string; value: string; note?: string; tone?: "blue" | "green" | "amber" | "slate"; icon: typeof FileText; compact?: boolean; }) {
   return (
-    <SectionCard className={`${compact ? "min-h-[104px] p-4" : "min-h-[142px] p-5"}`}>
+    <SectionCard className={`metric-card-hover ${compact ? "min-h-[104px] p-4" : "min-h-[142px] p-5"}`}>
       <div className="mb-4 flex items-start justify-between">
         <IconBadge tone={tone}><Icon size={compact ? 16 : 18} /></IconBadge>
-        {note ? <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${tone === "amber" ? "text-[#D4882F]" : tone === "green" ? "text-[#2F9E54]" : "text-[#44B887]"}`}>{note}</span> : null}
+        {note ? (
+          note === "Alert" ? (
+            <span className="flex items-center gap-1.5 rounded-full bg-[#FFF4E8] px-2.5 py-1 text-[10px] font-semibold text-[#D4882F]">
+              <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[#D4882F]" />
+              {note}
+            </span>
+          ) : (
+            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${tone === "amber" ? "text-[#D4882F]" : tone === "green" ? "text-[#2F9E54]" : "text-[#44B887]"}`}>{note}</span>
+          )
+        ) : null}
       </div>
       <div className={`font-medium leading-5 text-slate-500 ${compact ? "text-[11px] uppercase tracking-[0.12em]" : "text-[15px]"}`}>{title}</div>
       <div className={`mt-2 font-bold text-slate-900 ${compact ? "text-[16px]" : "text-[18px]"}`}>{value}</div>
@@ -2389,8 +2729,8 @@ function NotificationRow({ title, text, checked, onToggle }: { title: string; te
 
 function Modal({ children, onClose, widthClass }: { children: ReactNode; onClose: () => void; widthClass: string; }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-5 backdrop-blur-[2px] transition-all duration-300" onClick={onClose}>
-      <div className={`w-full overflow-hidden rounded-[24px] border border-[#dfe6f2] bg-white shadow-[0_30px_70px_rgba(15,23,42,0.22)] animate-in zoom-in-95 duration-200 ${widthClass}`} onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-5 py-5 backdrop-blur-[2px] transition-all duration-300" onClick={onClose}>
+      <div className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-[24px] border border-[#dfe6f2] bg-white shadow-[0_30px_70px_rgba(15,23,42,0.22)] animate-in zoom-in-95 duration-200 ${widthClass}`} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>
