@@ -28,14 +28,15 @@ export function DocumentsPage({ onOpenDocument }: { onOpenDocument: () => void }
             placeholder="Search by file name or order ID"
           />
         </label>
-        <DropdownField label="File Type: All" options={["File Type: All", "PDF", "JPG", "PNG"]} />
-        <DropdownField label="Uploaded By: All" />
+        <DropdownField label="File Type: All" options={["File Type: All", "PDF", "JPG", "PNG"]} widthClass="w-full" />
+        <DropdownField label="Uploaded By: All" widthClass="w-full" />
         <DropdownField
           label={statusFilter}
           options={["Status: All", "Pending Review", "Approved", "Rejected"]}
           onSelect={setStatusFilter}
+          widthClass="w-full"
         />
-        <DropdownField label="Date Range" icon={<Calendar size={16} className="text-slate-400" />} />
+        <DropdownField label="Date Range" icon={<Calendar size={16} className="text-slate-400" />} widthClass="w-full" />
       </div>
       <DocumentTable onOpenDocument={onOpenDocument} rows={filteredDocuments} />
       <div className="grid grid-cols-3 gap-4">

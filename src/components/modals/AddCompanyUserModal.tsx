@@ -1,33 +1,40 @@
 import { useState } from "react";
+import { Link2, ShieldCheck } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
+import type { CompanyUser } from "../../types";
 import {
   ModalHeader,
   ModalInput,
   ModalSectionTitle,
   ModalCheckbox,
-  SegmentedToggle,
+  ToggleOptionCard,
   ModalActionFooter,
 } from "./Modal";
 
 export function AddCompanyUserModal({
   onClose,
   onSwitchType,
+  companyToEdit,
 }: {
   onClose: () => void;
   onSwitchType: () => void;
+  companyToEdit?: CompanyUser | null;
 }) {
   const { setCompanies } = useAppContext();
+  const isEdit = !!companyToEdit;
+
   const [form, setForm] = useState({
-    companyName: "",
-    businessEmail: "",
-    phone: "",
-    contactPerson: "",
-    address: "",
-    contactEmail: "",
-    userName: "",
-    password: "",
-    sendInvite: false,
-    active: true,
+    companyName: companyToEdit?.companyName || "",
+    businessEmail: companyToEdit?.businessEmail || "",
+    phone: companyToEdit?.phone || "",
+    contactPerson: companyToEdit?.contactPerson || "",
+    address: companyToEdit?.address || "",
+    contactEmail: companyToEdit?.contactEmail || "",
+    userName: companyToEdit?.userName || "",
+    password: companyToEdit?.password || "",
+    sendInvite: companyToEdit?.sendInvite || false,
+    active: companyToEdit ? companyToEdit.status !== "Inactive" : true,
+    verify: companyToEdit ? !!companyToEdit.verify : false,
   });
   const [error, setError] = useState("");
 
@@ -42,23 +49,58 @@ export function AddCompanyUserModal({
       !form.contactPerson ||
       !form.contactEmail ||
       !form.userName ||
-      !form.password
+      (!isEdit && !form.password)
     ) {
-      setError("Complete all required fields before creating the company user.");
+      setError("Complete all required fields before saving.");
       return;
     }
 
-    const newCompany = [
-      form.companyName.substring(0, 2).toUpperCase(),
-      "bg-[#DCE7FF] text-[#3165CF]",
-      form.companyName,
-      form.contactPerson,
-      form.businessEmail,
-      form.phone,
-      form.active ? "Active" : "Inactive",
-      "Just now",
-    ];
-    setCompanies((prev) => [newCompany, ...prev]);
+    if (isEdit && companyToEdit) {
+      setCompanies((prev) =>
+        prev.map((c) =>
+          c.id === companyToEdit.id
+            ? {
+                ...c,
+                companyName: form.companyName,
+                contactPerson: form.contactPerson,
+                businessEmail: form.businessEmail,
+                phone: form.phone,
+                status: form.active ? "Active" : "Inactive",
+                verify: form.verify,
+                address: form.address,
+                contactEmail: form.contactEmail,
+                userName: form.userName,
+                password: form.password || c.password,
+                sendInvite: form.sendInvite,
+                initials: form.companyName.substring(0, 2).toUpperCase(),
+              }
+            : c
+        )
+      );
+    } else {
+      const newCompany: CompanyUser = {
+        id: `COMP-${Date.now()}`,
+        initials: form.companyName.substring(0, 2).toUpperCase(),
+        color: "bg-[#DCE7FF] text-[#3165CF]",
+        companyName: form.companyName,
+        contactPerson: form.contactPerson,
+        businessEmail: form.businessEmail,
+        phone: form.phone,
+        status: form.active ? "Active" : "Inactive",
+        verify: form.verify,
+        createdDate: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        address: form.address,
+        contactEmail: form.contactEmail,
+        userName: form.userName,
+        password: form.password,
+        sendInvite: form.sendInvite,
+      };
+      setCompanies((prev) => [newCompany, ...prev]);
+    }
 
     setError("");
     onClose();
@@ -66,19 +108,25 @@ export function AddCompanyUserModal({
 
   return (
     <div className="flex flex-col max-h-[88vh]">
-      <ModalHeader title="Add New User" subtitle="Create a new user account" onClose={onClose} />
+      <ModalHeader
+        title={isEdit ? "Edit Company User" : "Add New User"}
+        subtitle={isEdit ? "Update this title company user account details" : "Create a new user account"}
+        onClose={onClose}
+      />
       <div className="flex-1 overflow-y-auto space-y-7 px-5 py-5">
-        <div>
-          <div className="mb-3 text-[14px] font-semibold text-slate-600">User Type Selection</div>
-          <div className="inline-flex rounded-xl bg-[#EDF1F7] p-1">
-            <button className="rounded-lg bg-white px-5 py-2 text-[14px] font-semibold text-brand-500 shadow-sm">
-              Title Company
-            </button>
-            <button onClick={onSwitchType} className="px-5 py-2 text-[14px] font-medium text-slate-500 hover:text-slate-700 transition">
-              Notary
-            </button>
+        {!isEdit && (
+          <div>
+            <div className="mb-3 text-[14px] font-semibold text-slate-600">User Type Selection</div>
+            <div className="inline-flex rounded-xl bg-[#EDF1F7] p-1">
+              <button className="rounded-lg bg-white px-5 py-2 text-[14px] font-semibold text-brand-500 shadow-sm">
+                Title Company
+              </button>
+              <button onClick={onSwitchType} className="px-5 py-2 text-[14px] font-medium text-slate-500 hover:text-slate-700 transition">
+                Notary
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-2 gap-5">
           <ModalInput
@@ -148,16 +196,22 @@ export function AddCompanyUserModal({
           />
         </div>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[16px] font-semibold text-slate-700">User Status</div>
-            <div className="text-[13px] text-slate-500">Set initial account state</div>
-          </div>
-          <SegmentedToggle
-            left="Active"
-            right="Inactive"
-            active={form.active ? "left" : "right"}
-            onChange={(value) => updateField("active", value === "left")}
+        <div className="grid grid-cols-2 gap-5">
+          <ToggleOptionCard
+            title="Status"
+            subtitle={form.active ? "Active" : "Inactive"}
+            checked={form.active}
+            onToggle={() => updateField("active", !form.active)}
+            icon={<Link2 size={16} />}
+            activeColor="text-emerald-600"
+          />
+          <ToggleOptionCard
+            title="Verify Company"
+            subtitle={form.verify ? "Verified" : "Pending Verification"}
+            checked={form.verify}
+            onToggle={() => updateField("verify", !form.verify)}
+            icon={<ShieldCheck size={16} />}
+            activeColor="text-brand-500"
           />
         </div>
 
@@ -167,7 +221,7 @@ export function AddCompanyUserModal({
           </div>
         ) : null}
       </div>
-      <ModalActionFooter onClose={onClose} onConfirm={handleSubmit} confirmLabel="Create User" />
+      <ModalActionFooter onClose={onClose} onConfirm={handleSubmit} confirmLabel={isEdit ? "Save Changes" : "Create User"} />
     </div>
   );
 }

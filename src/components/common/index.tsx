@@ -17,12 +17,22 @@ import {
 import { statusConfig } from "../../data";
 import type { StatusKey } from "../../types";
 
-// Buttons
-export function PrimaryButton({ children, onClick }: { children: ReactNode; onClick?: () => void; }) {
+export function PrimaryButton({
+  children,
+  onClick,
+  className = "",
+  disabled = false,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  className?: string;
+  disabled?: boolean;
+}) {
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-3 text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(37,99,214,0.22)] hover:bg-brand-600 transition"
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-3 text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(37,99,214,0.22)] hover:bg-brand-600 transition disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       {children}
     </button>
@@ -33,15 +43,18 @@ export function GhostButton({
   children,
   className = "",
   onClick,
+  disabled = false,
 }: {
   children: ReactNode;
   className?: string;
   onClick?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-lg border border-line bg-white px-5 py-3 text-[14px] font-semibold text-slate-600 hover:bg-slate-50 transition ${className}`}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-lg border border-line bg-white px-5 py-3 text-[14px] font-semibold text-slate-600 hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       {children}
     </button>
@@ -188,11 +201,24 @@ export function StatusBadge({ status }: { status: StatusKey }) {
   return <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${statusConfig[status]}`}>{status}</span>;
 }
 
-export function TableHeader({ title, action }: { title: string; action: string }) {
+export function TableHeader({
+  title,
+  action,
+  onAction,
+}: {
+  title: string;
+  action: string;
+  onAction?: () => void;
+}) {
   return (
     <div className="flex items-center justify-between px-5 py-4">
       <h3 className="text-[18px] font-semibold text-slate-800">{title}</h3>
-      <button className="text-[13px] font-semibold text-brand-500 hover:text-brand-600 transition">{action}</button>
+      <button
+        onClick={onAction}
+        className="text-[13px] font-semibold text-brand-500 hover:text-brand-600 transition"
+      >
+        {action}
+      </button>
     </div>
   );
 }
@@ -200,10 +226,18 @@ export function TableHeader({ title, action }: { title: string; action: string }
 export function Pagination({
   footer,
   pages,
+  currentPage = 1,
+  onPageChange,
+  onPrevious,
+  onNext,
   withPrevious = false,
 }: {
   footer: string;
   pages: string[];
+  currentPage?: number;
+  onPageChange?: (page: number) => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
   withPrevious?: boolean;
 }) {
   return (
@@ -211,24 +245,37 @@ export function Pagination({
       <div>{footer}</div>
       <div className="flex items-center gap-2">
         {withPrevious ? (
-          <button className="flex items-center gap-1 text-slate-400 hover:text-slate-600">
+          <button
+            onClick={onPrevious}
+            disabled={currentPage === 1}
+            className="flex items-center gap-1 text-slate-600 hover:text-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <ChevronLeft size={14} /> Previous
           </button>
         ) : (
           <ChevronLeft size={14} className="text-slate-400" />
         )}
-        {pages.map((p, index) => (
-          <button
-            key={`${p}-${index}`}
-            className={`flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-[13px] transition ${
-              index === 0 ? "bg-brand-500 text-white font-semibold" : "text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            {p}
-          </button>
-        ))}
+        {pages.map((p, index) => {
+          const pageNum = parseInt(p);
+          const isActive = pageNum === currentPage;
+          return (
+            <button
+              key={`${p}-${index}`}
+              onClick={() => !isNaN(pageNum) && onPageChange?.(pageNum)}
+              className={`flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-[13px] transition ${
+                isActive ? "bg-brand-500 text-white font-semibold" : "text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {p}
+            </button>
+          );
+        })}
         {withPrevious ? (
-          <button className="flex items-center gap-1 text-slate-600 hover:text-slate-800">
+          <button
+            onClick={onNext}
+            disabled={currentPage === pages.length || (pages.length > 0 && currentPage === parseInt(pages[pages.length - 1]))}
+            className="flex items-center gap-1 text-slate-600 hover:text-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             Next <ChevronRight size={14} />
           </button>
         ) : (
@@ -339,24 +386,26 @@ export function DropdownField({
   options = [],
   onSelect = () => {},
   icon,
+  widthClass = "w-[168px]",
 }: {
   label: string;
   options?: string[];
   onSelect?: (val: string) => void;
   icon?: ReactNode;
+  widthClass?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative">
+    <div className={`relative ${widthClass}`}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-11 min-w-[140px] items-center justify-between gap-3 rounded-[12px] border border-[#e2e8f3] bg-white px-4 text-[14px] font-semibold text-slate-700 transition hover:border-brand-300 hover:bg-slate-50"
+        className="flex h-11 w-full items-center justify-between gap-3 rounded-[12px] border border-[#e2e8f3] bg-white px-4 text-[14px] font-semibold text-slate-700 transition hover:border-brand-300 hover:bg-slate-50"
       >
-        <span className="flex items-center gap-2">{icon}{label}</span>
-        <ChevronDown size={16} className={`text-slate-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
+        <span className="flex items-center gap-2 truncate">{icon}{label}</span>
+        <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-2 min-w-full overflow-hidden rounded-[14px] border border-[#e2e8f3] bg-white py-1 shadow-[0_12px_40px_rgba(20,48,112,0.12)] animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full left-0 z-50 mt-2 w-full overflow-hidden rounded-[14px] border border-[#e2e8f3] bg-white py-1 shadow-[0_12px_40px_rgba(20,48,112,0.12)] animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map((opt) => (
             <button
               key={opt}
@@ -365,7 +414,9 @@ export function DropdownField({
                 setOpen(false);
               }}
               className={`w-full px-4 py-2.5 text-left text-[14px] transition-colors hover:bg-brand-50 ${
-                label === opt ? "bg-brand-50 font-bold text-brand-600" : "text-slate-600 hover:text-brand-600"
+                label === opt || label.endsWith(opt) || label.includes(opt)
+                  ? "bg-brand-50 font-bold text-brand-600"
+                  : "text-slate-600 hover:text-brand-600"
               }`}
             >
               {opt}
@@ -383,12 +434,16 @@ export function FilterBar({
   statusValue = "All Status",
   onStatusChange = () => {},
   statusOptions = ["All Status"],
+  sortValue = "Newest",
+  onSortChange = () => {},
 }: {
   searchValue?: string;
   onSearchChange?: (val: string) => void;
   statusValue?: string;
   onStatusChange?: (val: string) => void;
   statusOptions?: string[];
+  sortValue?: string;
+  onSortChange?: (val: string) => void;
 }) {
   return (
     <div className="flex items-center gap-4 rounded-xl bg-white px-4 py-3 shadow-sm">
@@ -402,13 +457,8 @@ export function FilterBar({
           className="w-full bg-transparent text-[14px] text-slate-700 outline-none placeholder:text-slate-400"
         />
       </div>
-      <DropdownField label={statusValue} options={statusOptions} onSelect={onStatusChange} />
-      <DropdownField label="Sort by: Newest" />
-      <Download
-        size={16}
-        className="cursor-pointer text-slate-500 hover:text-brand-500 transition"
-        onClick={() => alert("Exporting report...")}
-      />
+      <DropdownField label={statusValue} options={statusOptions} onSelect={onStatusChange} widthClass="w-[168px]" />
+      <DropdownField label={`Sort by: ${sortValue}`} options={["Newest", "Oldest"]} onSelect={onSortChange} widthClass="w-[180px]" />
     </div>
   );
 }

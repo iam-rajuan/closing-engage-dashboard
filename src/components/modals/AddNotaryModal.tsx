@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar, MapPin, Link2, ShieldCheck } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
+import type { NotaryUser } from "../../types";
 import {
   ModalHeader,
   ModalInput,
@@ -10,20 +11,28 @@ import {
   ModalActionFooter,
 } from "./Modal";
 
-export function AddNotaryModal({ onClose }: { onClose: () => void }) {
+export function AddNotaryModal({
+  onClose,
+  notaryToEdit,
+}: {
+  onClose: () => void;
+  notaryToEdit?: NotaryUser | null;
+}) {
   const { setNotaries } = useAppContext();
+  const isEdit = !!notaryToEdit;
+
   const [form, setForm] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    license: "",
-    expiry: "",
-    serviceArea: "",
-    userName: "",
-    password: "",
-    sendInvite: false,
-    active: true,
-    verify: false,
+    fullName: notaryToEdit?.fullName || "",
+    email: notaryToEdit?.email || "",
+    phone: notaryToEdit?.phone || "",
+    license: notaryToEdit?.license || "",
+    expiry: notaryToEdit?.expiry || "",
+    serviceArea: notaryToEdit?.serviceArea || "",
+    userName: notaryToEdit?.userName || "",
+    password: notaryToEdit?.password || "",
+    sendInvite: notaryToEdit?.sendInvite || false,
+    active: notaryToEdit ? notaryToEdit.status !== "Inactive" : true,
+    verify: notaryToEdit ? !!notaryToEdit.verify : false,
   });
   const [error, setError] = useState("");
 
@@ -39,24 +48,59 @@ export function AddNotaryModal({ onClose }: { onClose: () => void }) {
       !form.expiry ||
       !form.serviceArea ||
       !form.userName ||
-      !form.password
+      (!isEdit && !form.password)
     ) {
-      setError("Complete all required fields before creating the notary user.");
+      setError("Complete all required fields before saving.");
       return;
     }
 
-    const newNotary = [
-      form.fullName.substring(0, 2).toUpperCase(),
-      "bg-[#DCE7FF] text-[#3165CF]",
-      form.fullName,
-      "Notary",
-      form.email,
-      form.phone,
-      form.license,
-      form.active ? "Active" : "Inactive",
-      "Just now",
-    ];
-    setNotaries((prev) => [newNotary, ...prev]);
+    if (isEdit && notaryToEdit) {
+      setNotaries((prev) =>
+        prev.map((n) =>
+          n.id === notaryToEdit.id
+            ? {
+                ...n,
+                fullName: form.fullName,
+                email: form.email,
+                phone: form.phone,
+                license: form.license,
+                expiry: form.expiry,
+                serviceArea: form.serviceArea,
+                status: form.active ? "Active" : "Inactive",
+                verify: form.verify,
+                userName: form.userName,
+                password: form.password || n.password,
+                sendInvite: form.sendInvite,
+                initials: form.fullName.substring(0, 2).toUpperCase(),
+              }
+            : n
+        )
+      );
+    } else {
+      const newNotary: NotaryUser = {
+        id: `NOT-${Date.now()}`,
+        initials: form.fullName.substring(0, 2).toUpperCase(),
+        color: "bg-[#FFE2D3] text-[#C66B33]",
+        fullName: form.fullName,
+        specialty: "Notary Partner",
+        email: form.email,
+        phone: form.phone,
+        license: form.license,
+        status: form.active ? "Active" : "Inactive",
+        verify: form.verify,
+        createdDate: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        expiry: form.expiry,
+        serviceArea: form.serviceArea,
+        userName: form.userName,
+        password: form.password,
+        sendInvite: form.sendInvite,
+      };
+      setNotaries((prev) => [newNotary, ...prev]);
+    }
 
     setError("");
     onClose();
@@ -64,7 +108,11 @@ export function AddNotaryModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="flex flex-col max-h-[88vh]">
-      <ModalHeader title="Add Notary" subtitle="Create a new notary account" onClose={onClose} />
+      <ModalHeader
+        title={isEdit ? "Edit Notary User" : "Add Notary"}
+        subtitle={isEdit ? "Update this notary user account details" : "Create a new notary account"}
+        onClose={onClose}
+      />
       <div className="flex-1 overflow-y-auto space-y-7 px-5 py-5">
         <div>
           <ModalSectionTitle title="Personal Information" />
@@ -148,17 +196,19 @@ export function AddNotaryModal({ onClose }: { onClose: () => void }) {
         <div className="grid grid-cols-2 gap-5">
           <ToggleOptionCard
             title="Status"
-            subtitle="Active / Inactive"
+            subtitle={form.active ? "Active" : "Inactive"}
             checked={form.active}
             onToggle={() => updateField("active", !form.active)}
             icon={<Link2 size={16} />}
+            activeColor="text-emerald-600"
           />
           <ToggleOptionCard
             title="Verify Notary"
-            subtitle="Credentials Check"
+            subtitle={form.verify ? "Verified" : "Pending Verification"}
             checked={form.verify}
             onToggle={() => updateField("verify", !form.verify)}
             icon={<ShieldCheck size={16} />}
+            activeColor="text-brand-500"
           />
         </div>
 
@@ -168,7 +218,7 @@ export function AddNotaryModal({ onClose }: { onClose: () => void }) {
           </div>
         ) : null}
       </div>
-      <ModalActionFooter onClose={onClose} onConfirm={handleSubmit} confirmLabel="Create User" />
+      <ModalActionFooter onClose={onClose} onConfirm={handleSubmit} confirmLabel={isEdit ? "Save Changes" : "Create User"} />
     </div>
   );
 }

@@ -1,19 +1,40 @@
+import { useState, useEffect } from "react";
 import { Eye, Pencil, Trash2, MoreVertical, UserPlus, Download, FileText } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { StatusBadge, Pagination, Avatar, SectionCard } from "../common";
 import { profileGradients } from "../../data";
-import type { StatusKey } from "../../types";
+import type { StatusKey, CompanyUser, NotaryUser } from "../../types";
 
-export function CompanyTable({ onViewCompany, rows }: { onViewCompany: () => void; rows: any[] }) {
+export function CompanyTable({
+  onViewCompany,
+  onEditCompany,
+  rows,
+}: {
+  onViewCompany: (company: CompanyUser) => void;
+  onEditCompany?: (company: CompanyUser) => void;
+  rows: CompanyUser[];
+}) {
   const { setCompanies, showConfirm } = useAppContext();
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.ceil(rows.length / pageSize) || 1;
 
-  const handleDelete = (name: string) => {
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rows]);
+
+  const handleDelete = (id: string, name: string) => {
     showConfirm(
       "Delete Company?",
       `Are you sure you want to remove ${name} from the system? This action will permanently delete all associated data.`,
-      () => setCompanies((prev) => prev.filter((c) => c[2] !== name))
+      () => setCompanies((prev) => prev.filter((c) => c.id !== id)),
+      "Delete",
+      "danger"
     );
   };
+
+  const paginatedRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pages = Array.from({ length: totalPages }, (_, i) => (i + 1).toString());
 
   return (
     <SectionCard className="overflow-hidden">
@@ -29,34 +50,34 @@ export function CompanyTable({ onViewCompany, rows }: { onViewCompany: () => voi
           </tr>
         </thead>
         <tbody>
-          {rows.map(([initials, color, companyName, contactPerson, email, phone, status, createdDate]) => (
-            <tr key={companyName} className="border-t border-line bg-white text-[14px]">
+          {paginatedRows.map((company) => (
+            <tr key={company.id} className="border-t border-line bg-white text-[14px]">
               <td className="px-5 py-6">
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg text-[12px] font-bold ${color}`}>
-                    {initials}
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg text-[12px] font-bold ${company.color}`}>
+                    {company.initials}
                   </div>
-                  <div className="max-w-[130px] text-[14px] font-semibold leading-5 text-slate-800">{companyName}</div>
+                  <div className="max-w-[130px] text-[14px] font-semibold leading-5 text-slate-800">{company.companyName}</div>
                 </div>
               </td>
-              <td className="px-3 py-6 text-slate-700">{contactPerson}</td>
+              <td className="px-3 py-6 text-slate-700">{company.contactPerson}</td>
               <td className="px-3 py-6">
-                <div className="leading-5 text-slate-700">{email}</div>
-                <div className="mt-1 text-[12px] text-slate-500">{phone}</div>
+                <div className="leading-5 text-slate-700">{company.businessEmail}</div>
+                <div className="mt-1 text-[12px] text-slate-500">{company.phone}</div>
               </td>
               <td className="px-3 py-6">
-                <StatusBadge status={status as StatusKey} />
+                <StatusBadge status={company.status as StatusKey} />
               </td>
-              <td className="px-3 py-6 text-slate-500">{createdDate}</td>
+              <td className="px-3 py-6 text-slate-500">{company.createdDate}</td>
               <td className="px-5 py-6">
                 <div className="flex items-center gap-4 text-slate-500">
-                  <button onClick={onViewCompany} className="hover:text-brand-500 focus:outline-none transition">
+                  <button onClick={() => onViewCompany(company)} className="hover:text-brand-500 focus:outline-none transition">
                     <Eye size={16} />
                   </button>
-                  <button className="hover:text-brand-500 focus:outline-none transition">
+                  <button onClick={() => onEditCompany?.(company)} className="hover:text-brand-500 focus:outline-none transition">
                     <Pencil size={15} />
                   </button>
-                  <button onClick={() => handleDelete(companyName)} className="hover:text-[#D14544] focus:outline-none transition">
+                  <button onClick={() => handleDelete(company.id, company.companyName)} className="hover:text-[#D14544] focus:outline-none transition">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -65,21 +86,49 @@ export function CompanyTable({ onViewCompany, rows }: { onViewCompany: () => voi
           ))}
         </tbody>
       </table>
-      <Pagination footer={`Showing 1 to ${rows.length} of ${rows.length} companies`} pages={["1"]} />
+      <Pagination
+        footer={`Showing ${rows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, rows.length)} of ${rows.length} companies`}
+        pages={pages}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+        onNext={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+        withPrevious={totalPages > 1}
+      />
     </SectionCard>
   );
 }
 
-export function NotaryTable({ onViewNotary, rows }: { onViewNotary: () => void; rows: any[] }) {
+export function NotaryTable({
+  onViewNotary,
+  onEditNotary,
+  rows,
+}: {
+  onViewNotary: (notary: NotaryUser) => void;
+  onEditNotary?: (notary: NotaryUser) => void;
+  rows: NotaryUser[];
+}) {
   const { setNotaries, showConfirm } = useAppContext();
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.ceil(rows.length / pageSize) || 1;
 
-  const handleDelete = (name: string) => {
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rows]);
+
+  const handleDelete = (id: string, name: string) => {
     showConfirm(
       "Delete Notary?",
       `Are you sure you want to remove ${name} from the network? This will revoke their access to the portal immediately.`,
-      () => setNotaries((prev) => prev.filter((n) => n[2] !== name))
+      () => setNotaries((prev) => prev.filter((n) => n.id !== id)),
+      "Delete",
+      "danger"
     );
   };
+
+  const paginatedRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pages = Array.from({ length: totalPages }, (_, i) => (i + 1).toString());
 
   return (
     <SectionCard className="overflow-hidden">
@@ -95,39 +144,39 @@ export function NotaryTable({ onViewNotary, rows }: { onViewNotary: () => void; 
           </tr>
         </thead>
         <tbody>
-          {rows.map(([initials, color, name, specialty, email, phone, license, status, createdDate]) => (
-            <tr key={name} className="border-t border-line text-[14px]">
+          {paginatedRows.map((notary) => (
+            <tr key={notary.id} className="border-t border-line text-[14px]">
               <td className="px-4 py-5">
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold ${color}`}>
-                    {initials}
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-bold ${notary.color}`}>
+                    {notary.initials}
                   </div>
                   <div>
-                    <div className="font-semibold text-slate-800">{name}</div>
-                    <div className="text-[12px] text-slate-500">{specialty}</div>
+                    <div className="font-semibold text-slate-800">{notary.fullName}</div>
+                    <div className="text-[12px] text-slate-500">{notary.specialty}</div>
                   </div>
                 </div>
               </td>
               <td className="px-4 py-5">
-                <div className="text-slate-700">{email}</div>
-                <div className="text-[12px] text-slate-500">{phone}</div>
+                <div className="text-slate-700">{notary.email}</div>
+                <div className="text-[12px] text-slate-500">{notary.phone}</div>
               </td>
               <td className="px-4 py-5">
-                <span className="rounded-md bg-[#EEF3FA] px-3 py-1 text-[13px] text-slate-600">{license}</span>
+                <span className="rounded-md bg-[#EEF3FA] px-3 py-1 text-[13px] text-slate-600">{notary.license}</span>
               </td>
               <td className="px-4 py-5">
-                <StatusBadge status={status as StatusKey} />
+                <StatusBadge status={notary.status as StatusKey} />
               </td>
-              <td className="px-4 py-5 text-slate-500">{createdDate}</td>
+              <td className="px-4 py-5 text-slate-500">{notary.createdDate}</td>
               <td className="px-4 py-5">
                 <div className="flex items-center gap-4 text-slate-500">
-                  <button onClick={onViewNotary} className="hover:text-brand-500 focus:outline-none transition">
+                  <button onClick={() => onViewNotary(notary)} className="hover:text-brand-500 focus:outline-none transition">
                     <Eye size={16} />
                   </button>
-                  <button className="hover:text-brand-500 focus:outline-none transition">
+                  <button onClick={() => onEditNotary?.(notary)} className="hover:text-brand-500 focus:outline-none transition">
                     <Pencil size={15} />
                   </button>
-                  <button onClick={() => handleDelete(name)} className="hover:text-[#D14544] focus:outline-none transition">
+                  <button onClick={() => handleDelete(notary.id, notary.fullName)} className="hover:text-[#D14544] focus:outline-none transition">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -136,12 +185,20 @@ export function NotaryTable({ onViewNotary, rows }: { onViewNotary: () => void; 
           ))}
         </tbody>
       </table>
-      <Pagination footer={`Showing 1 to ${rows.length} of ${rows.length} notaries`} pages={["1"]} />
+      <Pagination
+        footer={`Showing ${rows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, rows.length)} of ${rows.length} notaries`}
+        pages={pages}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+        onNext={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+        withPrevious={totalPages > 1}
+      />
     </SectionCard>
   );
 }
 
-export function OrderTable({ onOpenOrder, rows }: { onOpenOrder: () => void; rows: any[] }) {
+export function OrderTable({ onOpenOrder, rows }: { onOpenOrder: (id: string) => void; rows: any[] }) {
   return (
     <SectionCard className="overflow-hidden">
       <table className="w-full">
@@ -161,7 +218,7 @@ export function OrderTable({ onOpenOrder, rows }: { onOpenOrder: () => void; row
             <tr key={id} className="border-t border-line bg-white text-[14px]">
               <td className="px-5 py-5">
                 <button
-                  onClick={onOpenOrder}
+                  onClick={() => onOpenOrder(id)}
                   className="whitespace-pre-line text-left font-semibold leading-6 text-brand-500 focus:outline-none hover:text-brand-600 transition animate-hover"
                 >
                   {id.replace("-", "-\n")}
@@ -192,7 +249,7 @@ export function OrderTable({ onOpenOrder, rows }: { onOpenOrder: () => void; row
               </td>
               <td className="px-5 py-5">
                 <div className="flex items-center gap-4 text-slate-500">
-                  <button onClick={onOpenOrder} className="hover:text-brand-500 focus:outline-none transition">
+                  <button onClick={() => onOpenOrder(id)} className="hover:text-brand-500 focus:outline-none transition">
                     <Eye size={16} />
                   </button>
                   <button className="hover:text-brand-500 focus:outline-none transition">

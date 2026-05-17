@@ -9,7 +9,7 @@ export function OrdersPage({
   onCreateOrder,
   initialFilter = "All Orders",
 }: {
-  onOpenOrder: () => void;
+  onOpenOrder: (id: string) => void;
   onCreateOrder: () => void;
   initialFilter?: string;
 }) {
@@ -17,6 +17,7 @@ export function OrdersPage({
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
+  const [sortOrder, setSortOrder] = useState("Newest");
 
   useEffect(() => {
     setActiveFilter(initialFilter);
@@ -29,6 +30,14 @@ export function OrdersPage({
     const matchesStatus = statusFilter === "All Status" ? true : status === statusFilter;
     const matchesSearch = `${id} ${company} ${notary} ${location}`.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesStatus && matchesSearch;
+  });
+
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    const dateStrA = a[5].replace("\n", " ");
+    const dateStrB = b[5].replace("\n", " ");
+    const dateA = new Date(dateStrA).getTime();
+    const dateB = new Date(dateStrB).getTime();
+    return sortOrder === "Newest" ? dateB - dateA : dateA - dateB;
   });
 
   return (
@@ -76,18 +85,14 @@ export function OrdersPage({
             label={statusFilter}
             options={["All Status", "Received", "Assigned", "Under Review", "Approved", "Completed"]}
             onSelect={setStatusFilter}
+            widthClass="w-[168px]"
           />
-          <DropdownField label="Sort by: Newest" options={["Newest", "Oldest"]} />
-          <button
-            onClick={() => {
-              setSearchQuery("");
-              setActiveFilter("All Orders");
-              setStatusFilter("All Status");
-            }}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 focus:outline-none transition"
-          >
-            <Download size={16} />
-          </button>
+          <DropdownField
+            label={`Sort by: ${sortOrder}`}
+            options={["Newest", "Oldest"]}
+            onSelect={setSortOrder}
+            widthClass="w-[180px]"
+          />
         </div>
       </div>
 
@@ -124,7 +129,7 @@ export function OrdersPage({
         </SectionCard>
       </div>
 
-      <OrderTable onOpenOrder={onOpenOrder} rows={filteredRows} />
+      <OrderTable onOpenOrder={onOpenOrder} rows={sortedRows} />
     </div>
   );
 }

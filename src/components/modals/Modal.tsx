@@ -191,21 +191,25 @@ export function ToggleOptionCard({
   checked,
   onToggle,
   icon,
+  activeColor = "text-brand-500",
 }: {
   title: string;
   subtitle: string;
   checked: boolean;
   onToggle: () => void;
   icon: ReactNode;
+  activeColor?: string;
 }) {
   return (
-    <div className="rounded-xl bg-[#F5F8FC] px-5 py-4">
+    <div className={`rounded-xl px-5 py-4 border transition-all duration-200 ${checked ? "bg-white border-slate-200 shadow-sm" : "bg-[#F5F8FC] border-transparent"}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="text-slate-500">{icon}</div>
+          <div className={`transition-colors duration-200 ${checked ? "text-brand-500" : "text-slate-400"}`}>{icon}</div>
           <div>
-            <div className="text-[16px] font-semibold text-slate-700">{title}</div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{subtitle}</div>
+            <div className="text-[14px] font-bold text-slate-800">{title}</div>
+            <div className={`text-[10px] font-bold uppercase tracking-[0.08em] transition-colors duration-200 ${checked ? activeColor : "text-slate-400"}`}>
+              {subtitle}
+            </div>
           </div>
         </div>
         <button type="button" onClick={onToggle} className="focus:outline-none">

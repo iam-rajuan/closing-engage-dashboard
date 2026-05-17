@@ -62,7 +62,7 @@ export function TopNavbar({
 
   return (
     <header className="fixed left-0 lg:left-[220px] right-0 top-0 z-20 h-[68px] border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-      <div className="flex h-full items-center justify-between px-6">
+      <div className="flex h-full items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <button
             onClick={onToggleSidebar}
@@ -188,8 +188,8 @@ export function TopNavbar({
               onClick={() => setProfileOpen(!profileOpen)}
               className="flex items-center gap-3 rounded-xl p-1.5 transition hover:bg-slate-50 text-left focus:outline-none"
             >
-              <div className="text-right leading-tight hidden md:block">
-                <div className="text-[13px] font-semibold text-slate-800">Alex Sterling</div>
+              <div className="text-right leading-tight hidden md:block w-[120px] truncate">
+                <div className="text-[13px] font-semibold text-slate-800 truncate">Alex Sterling</div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Admin</div>
               </div>
               <Avatar className="h-8 w-8" gradient={profileGradients.mark} />

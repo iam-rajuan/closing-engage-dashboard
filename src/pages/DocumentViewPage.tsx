@@ -41,11 +41,11 @@ export function DocumentViewPage({ onBack }: { onBack: () => void }) {
           </div>
         </div>
         <div className="flex gap-3">
-          <GhostButton>
+          <GhostButton className="w-[150px] h-[46px] justify-center border-brand-300 text-brand-600 bg-brand-50/50 hover:bg-brand-50 px-0">
             <Upload size={15} />
             Share
           </GhostButton>
-          <PrimaryButton>
+          <PrimaryButton className="w-[150px] h-[46px] justify-center px-0">
             <Download size={15} />
             Version History
           </PrimaryButton>
