@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Check, Mail, FileText, Save } from "lucide-react";
+import { Check, Mail, FileText, Save, Loader2, KeyRound } from "lucide-react";
 import { Avatar, SectionCard, GhostButton, PrimaryButton, FormSection, NotificationRow } from "../components/common";
 import { profileGradients } from "../data";
+import { useToast } from "../components/Toast";
 
 export function SettingsPage() {
+  const { showToast } = useToast();
+
   const initialProfile = {
     fullName: "Alex Thompson",
     email: "alex.t@estateflux.com",
@@ -13,11 +16,13 @@ export function SettingsPage() {
     contactNumber: "+1 (555) 200-1100",
     businessAddress: "782 Commerce Blvd, Austin TX",
   };
+
   const initialSecurity = {
-    currentPassword: "••••••••",
-    newPassword: "••••••••",
-    confirmPassword: "••••••••",
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   };
+
   const initialNotifications = {
     emailNotifications: true,
     orderUpdates: true,
@@ -27,34 +32,76 @@ export function SettingsPage() {
   const [profileForm, setProfileForm] = useState(initialProfile);
   const [securityForm, setSecurityForm] = useState(initialSecurity);
   const [notificationForm, setNotificationForm] = useState(initialNotifications);
-  const [saveMessage, setSaveMessage] = useState("");
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const updateProfile = (field: keyof typeof initialProfile, value: string) =>
     setProfileForm((current) => ({ ...current, [field]: value }));
   const updateSecurity = (field: keyof typeof initialSecurity, value: string) =>
     setSecurityForm((current) => ({ ...current, [field]: value }));
-  const toggleNotification = (field: keyof typeof initialNotifications) =>
-    setNotificationForm((current) => ({ ...current, [field]: !current[field] }));
+  
+  const toggleNotification = (field: keyof typeof initialNotifications) => {
+    const newValue = !notificationForm[field];
+    setNotificationForm((current) => ({ ...current, [field]: newValue }));
+    
+    // Simulate real-time API sync for toggles
+    showToast("Preferences Updated", { 
+      message: `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} ${newValue ? "enabled" : "disabled"}.`,
+      variant: "info"
+    });
+  };
 
   const handleReset = () => {
     setProfileForm(initialProfile);
     setSecurityForm(initialSecurity);
     setNotificationForm(initialNotifications);
-    setSaveMessage("Changes were reset.");
+    setIsEditing(false);
+    showToast("Changes Discarded", { message: "Your settings have been reset to their original state.", variant: "info" });
   };
 
-  const handleSave = () => {
+  const handleSaveProfile = () => {
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
+
+    // Simulate backend API latency
+    setTimeout(() => {
+      setIsSavingProfile(false);
+      setIsEditing(false);
+      showToast("Profile Updated", { message: "Your profile and company information have been saved successfully.", variant: "success" });
+    }, 1200);
+  };
+
+  const handleUpdatePassword = () => {
+    if (isUpdatingPassword) return;
+    
+    if (!securityForm.currentPassword) {
+      showToast("Validation Error", { message: "Please enter your current password.", variant: "error" });
+      return;
+    }
+    if (securityForm.newPassword.length < 8) {
+      showToast("Security Requirement", { message: "New password must be at least 8 characters long.", variant: "error" });
+      return;
+    }
     if (securityForm.newPassword !== securityForm.confirmPassword) {
-      setSaveMessage("Passwords do not match.");
+      showToast("Validation Error", { message: "New passwords do not match.", variant: "error" });
       return;
     }
 
-    setSaveMessage("Settings saved successfully.");
+    setIsUpdatingPassword(true);
+
+    // Simulate backend API latency
+    setTimeout(() => {
+      setIsUpdatingPassword(false);
+      setSecurityForm(initialSecurity); // Clear passwords
+      showToast("Password Updated", { message: "Your security credentials have been successfully changed.", variant: "success" });
+    }, 1500);
   };
 
   return (
     <div className="space-y-5">
-      <SectionCard className="flex items-center justify-between px-5 py-5 border border-slate-100 shadow-sm">
+      <SectionCard className="flex items-center justify-between px-5 py-5 border border-slate-100 shadow-sm transition-all duration-300">
         <div className="flex items-center gap-4">
           <div className="relative">
             <Avatar className="h-[52px] w-[52px] rounded-xl" gradient={profileGradients.alex} />
@@ -74,27 +121,67 @@ export function SettingsPage() {
             </div>
           </div>
         </div>
-        <GhostButton>Edit Profile</GhostButton>
+        <GhostButton 
+          onClick={() => setIsEditing(!isEditing)}
+          className={isEditing ? "bg-slate-100 text-slate-700" : ""}
+        >
+          {isEditing ? "Cancel Edit" : "Edit Profile"}
+        </GhostButton>
       </SectionCard>
 
       <div className="grid grid-cols-[1.85fr_0.9fr] gap-5">
         <div className="space-y-5">
           <FormSection title="Personal Information">
             <div className="grid grid-cols-2 gap-4">
-              <SettingsInput label="Full Name" value={profileForm.fullName} onChange={(value) => updateProfile("fullName", value)} />
-              <SettingsInput label="Email Address" value={profileForm.email} onChange={(value) => updateProfile("email", value)} />
+              <SettingsInput 
+                label="Full Name" 
+                value={profileForm.fullName} 
+                onChange={(value) => updateProfile("fullName", value)} 
+                disabled={!isEditing || isSavingProfile} 
+              />
+              <SettingsInput 
+                label="Email Address" 
+                value={profileForm.email} 
+                onChange={(value) => updateProfile("email", value)} 
+                disabled={!isEditing || isSavingProfile} 
+              />
               <div className="col-span-2">
-                <SettingsInput label="Phone Number" value={profileForm.phone} onChange={(value) => updateProfile("phone", value)} />
+                <SettingsInput 
+                  label="Phone Number" 
+                  value={profileForm.phone} 
+                  onChange={(value) => updateProfile("phone", value)} 
+                  disabled={!isEditing || isSavingProfile} 
+                />
               </div>
             </div>
           </FormSection>
 
           <FormSection title="Company Information">
             <div className="grid grid-cols-2 gap-4">
-              <SettingsInput label="Company Name" value={profileForm.companyName} onChange={(value) => updateProfile("companyName", value)} />
-              <SettingsInput label="Company Email" value={profileForm.companyEmail} onChange={(value) => updateProfile("companyEmail", value)} />
-              <SettingsInput label="Contact Number" value={profileForm.contactNumber} onChange={(value) => updateProfile("contactNumber", value)} />
-              <SettingsInput label="Business Address" value={profileForm.businessAddress} onChange={(value) => updateProfile("businessAddress", value)} />
+              <SettingsInput 
+                label="Company Name" 
+                value={profileForm.companyName} 
+                onChange={(value) => updateProfile("companyName", value)} 
+                disabled={!isEditing || isSavingProfile} 
+              />
+              <SettingsInput 
+                label="Company Email" 
+                value={profileForm.companyEmail} 
+                onChange={(value) => updateProfile("companyEmail", value)} 
+                disabled={!isEditing || isSavingProfile} 
+              />
+              <SettingsInput 
+                label="Contact Number" 
+                value={profileForm.contactNumber} 
+                onChange={(value) => updateProfile("contactNumber", value)} 
+                disabled={!isEditing || isSavingProfile} 
+              />
+              <SettingsInput 
+                label="Business Address" 
+                value={profileForm.businessAddress} 
+                onChange={(value) => updateProfile("businessAddress", value)} 
+                disabled={!isEditing || isSavingProfile} 
+              />
             </div>
           </FormSection>
         </div>
@@ -107,21 +194,41 @@ export function SettingsPage() {
                 value={securityForm.currentPassword}
                 onChange={(value) => updateSecurity("currentPassword", value)}
                 type="password"
+                placeholder="••••••••"
+                disabled={isUpdatingPassword}
               />
               <SettingsInput
                 label="New Password"
                 value={securityForm.newPassword}
                 onChange={(value) => updateSecurity("newPassword", value)}
                 type="password"
+                placeholder="••••••••"
+                disabled={isUpdatingPassword}
               />
               <SettingsInput
                 label="Confirm New Password"
                 value={securityForm.confirmPassword}
                 onChange={(value) => updateSecurity("confirmPassword", value)}
                 type="password"
+                placeholder="••••••••"
+                disabled={isUpdatingPassword}
               />
-              <GhostButton className="w-full justify-center text-brand-500 hover:bg-brand-50 transition border-brand-500/20">
-                Update Password
+              <GhostButton 
+                onClick={handleUpdatePassword}
+                disabled={isUpdatingPassword}
+                className="w-full justify-center text-brand-500 hover:bg-brand-50 transition border-brand-500/20"
+              >
+                {isUpdatingPassword ? (
+                  <>
+                    <Loader2 size={15} className="mr-2 animate-spin" />
+                    Updating Security...
+                  </>
+                ) : (
+                  <>
+                    <KeyRound size={15} className="mr-2" />
+                    Update Password
+                  </>
+                )}
               </GhostButton>
             </div>
           </FormSection>
@@ -153,13 +260,21 @@ export function SettingsPage() {
 
       <div className="border-t border-[#E7EAF1] pt-5">
         <div className="flex justify-end gap-3">
-          <GhostButton onClick={handleReset}>Cancel</GhostButton>
-          <PrimaryButton onClick={handleSave}>
-            <Save size={16} />
-            Save Changes
+          <GhostButton onClick={handleReset} disabled={isSavingProfile}>Cancel</GhostButton>
+          <PrimaryButton onClick={handleSaveProfile} disabled={isSavingProfile || !isEditing}>
+            {isSavingProfile ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Saving Configuration...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Save Changes
+              </>
+            )}
           </PrimaryButton>
         </div>
-        {saveMessage ? <div className="mt-3 text-right text-[13px] font-semibold text-slate-500">{saveMessage}</div> : null}
       </div>
     </div>
   );
@@ -170,20 +285,26 @@ function SettingsInput({
   value,
   onChange,
   type = "text",
+  placeholder = "",
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
-    <label className="block">
+    <label className={`block transition-opacity duration-200 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}>
       <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.1em] text-slate-400">{label}</div>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         type={type}
-        className="h-12 w-full rounded-xl border border-[#DBE4F3] bg-[#F8FAFF] px-4 text-[14px] text-slate-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-1 focus:ring-brand-500/20"
+        placeholder={placeholder}
+        disabled={disabled}
+        className="h-12 w-full rounded-xl border border-[#DBE4F3] bg-[#F8FAFF] px-4 text-[14px] text-slate-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-1 focus:ring-brand-500/20 disabled:pointer-events-none"
       />
     </label>
   );
