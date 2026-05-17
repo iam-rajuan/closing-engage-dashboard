@@ -422,6 +422,16 @@ export const orderRows = [
   ["#ORD-90212", "Northway Holdings", "NH", "Jane Simmons", "123 Maple St\nAustin, TX", "Oct 24,\n2023", "Assigned", "jane"],
   ["#ORD-90208", "Acme Title Co.", "AT", "Unassigned", "456 Oak Ave\nDallas, TX", "Oct 22,\n2023", "Received", "none"],
   ["#ORD-88421", "Capital Escrow", "CE", "Mark Evans", "789 Pine Rd\nHouston, TX", "Oct 18,\n2023", "Completed", "mark"],
+  ["#ORD-88390", "Summit Title", "ST", "Sarah Harrison", "901 Ridge Way\nDenver, CO", "Oct 15,\n2023", "Under Review", "jane"],
+  ["#ORD-88352", "Liberty Closings", "LC", "Unassigned", "302 Liberty Ln\nPhiladelphia, PA", "Oct 12,\n2023", "Received", "none"],
+  ["#ORD-88299", "Horizon Settlements", "HS", "David Kim", "112 Horizon Blvd\nSan Francisco, CA", "Oct 10,\n2023", "Approved", "mark"],
+  ["#ORD-88241", "Elite Trust", "ET", "Sarah Harrison", "88 Capitol Pkwy\nWashington, DC", "Oct 08,\n2023", "Completed", "jane"],
+  ["#ORD-88190", "Apex Title Group", "AT", "Unassigned", "543 Apex Tower\nDenver, CO", "Oct 05,\n2023", "Received", "none"],
+  ["#ORD-88112", "Vanguard Escrow", "VE", "David Kim", "76 Vanguard Rd\nSeattle, WA", "Oct 02,\n2023", "Assigned", "mark"],
+  ["#ORD-88055", "Keystone Closings", "KC", "Jane Simmons", "404 Key Rd\nAtlanta, GA", "Sep 28,\n2023", "Under Review", "jane"],
+  ["#ORD-88001", "Prime Settlement", "PS", "Mark Evans", "55 Prime St\nBoston, MA", "Sep 25,\n2023", "Completed", "mark"],
+  ["#ORD-87942", "Landmark Closings", "LC", "Unassigned", "22 Landmark Ave\nDallas, TX", "Sep 22,\n2023", "Received", "none"],
+  ["#ORD-87890", "Summit Title", "ST", "Sarah Harrison", "99 Summit Dr\nPhoenix, AZ", "Sep 18,\n2023", "Completed", "jane"],
 ] as const;
 
 export const documentRows = [

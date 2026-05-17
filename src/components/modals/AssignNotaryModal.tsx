@@ -5,19 +5,31 @@ import { assignableNotaries } from "../../data";
 import { StatusBadge } from "../common";
 import type { StatusKey } from "../../types";
 
-export function AssignNotaryModal({ onClose }: { onClose: () => void }) {
-  const { setOrders } = useAppContext();
+export function AssignNotaryModal({ orderId, onClose }: { orderId: string | null; onClose: () => void }) {
+  const { orders, setOrders } = useAppContext();
   const [query, setQuery] = useState("");
-  const [selectedNotary, setSelectedNotary] = useState<string>("Sarah Jenkins");
+  
+  const order = orders.find((o: any) => o[0] === orderId) || orders[0];
+  const orderNum = order ? order[0] : "#ORD-90212";
+  const orderLocation = order ? order[4].replace("\n", ", ") : "123 Maple St, Austin, TX";
+
+  const [selectedNotary, setSelectedNotary] = useState<string>(
+    order && order[3] !== "Unassigned" ? order[3] : "Sarah Jenkins"
+  );
+  
   const visibleNotaries = assignableNotaries.filter(([name, meta]) =>
     `${name} ${meta}`.toLowerCase().includes(query.toLowerCase())
   );
 
   const handleAssign = () => {
+    if (!orderId) {
+      onClose();
+      return;
+    }
     setOrders((prev: any) =>
       prev.map((o: any) =>
-        o[0] === "#ORD-90212"
-          ? [o[0], o[1], o[2], selectedNotary, o[4], o[5], "Assigned", "jane"]
+        o[0] === orderId
+          ? [o[0], o[1], o[2], selectedNotary, o[4], o[5], "Assigned", selectedNotary.toLowerCase().includes("sarah") || selectedNotary.toLowerCase().includes("elena") ? "jane" : "mark"]
           : o
       )
     );
@@ -38,9 +50,9 @@ export function AssignNotaryModal({ onClose }: { onClose: () => void }) {
       <div className="rounded-2xl bg-[#EEF3FA] p-5">
         <div className="grid grid-cols-[130px_1fr] gap-y-4 text-[16px]">
           <div className="font-semibold uppercase tracking-[0.08em] text-slate-500">Order ID</div>
-          <div className="text-right font-semibold text-slate-800">#ORD-90212</div>
+          <div className="text-right font-semibold text-slate-800">{orderNum}</div>
           <div className="font-semibold uppercase tracking-[0.08em] text-slate-500">Location</div>
-          <div className="text-right font-semibold text-slate-800">123 Maple St, Austin, TX</div>
+          <div className="text-right font-semibold text-slate-800">{orderLocation}</div>
         </div>
       </div>
       <div className="mt-7">

@@ -695,39 +695,50 @@ export function ActivityLog({
   title,
   items,
   footer,
+  onFooterClick,
 }: {
   title: string;
   items: Array<{ title: string; date: string; tone: string }>;
   footer: string;
+  onFooterClick?: () => void;
 }) {
   return (
     <SectionCard className="p-4">
       <div className="mb-5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">{title}</div>
-      <div className="space-y-5">
-        {items.map((item, index) => (
-          <div key={item.title} className="relative flex gap-4">
-            <div className="relative mt-1 flex flex-col items-center">
-              <div
-                className={`flex h-4 w-4 items-center justify-center rounded-full ${
-                  item.tone === "green"
-                    ? "bg-[#DCF9E5] text-[#2E9F54]"
-                    : item.tone === "blue"
-                      ? "bg-[#EEF5FF] text-brand-500"
-                      : "bg-[#EFF3FA] text-slate-400"
-                }`}
-              >
-                <div className="h-2 w-2 rounded-full bg-current" />
+      <div className="max-h-[280px] overflow-y-auto pr-2 scrollbar-thin -mr-2">
+        <div className="space-y-5">
+          {items.map((item, index) => (
+            <div key={`${item.title}-${index}`} className="relative flex gap-4">
+              <div className="relative mt-1 flex flex-col items-center">
+                <div
+                  className={`flex h-4 w-4 items-center justify-center rounded-full ${
+                    item.tone === "green"
+                      ? "bg-[#DCF9E5] text-[#2E9F54]"
+                      : item.tone === "blue"
+                        ? "bg-[#EEF5FF] text-brand-500"
+                        : item.tone === "red"
+                          ? "bg-[#FDE8E7] text-[#D25753]"
+                          : "bg-[#EFF3FA] text-slate-400"
+                  }`}
+                >
+                  <div className="h-2 w-2 rounded-full bg-current" />
+                </div>
+                {index < items.length - 1 ? <div className="mt-2 h-10 w-px bg-[#E7ECF4]" /> : null}
               </div>
-              {index < items.length - 1 ? <div className="mt-2 h-10 w-px bg-[#E7ECF4]" /> : null}
+              <div>
+                <div className="text-[14px] font-semibold text-slate-700">{item.title}</div>
+                <div className="text-[12px] text-slate-400">{item.date}</div>
+              </div>
             </div>
-            <div>
-              <div className="text-[14px] font-semibold text-slate-700">{item.title}</div>
-              <div className="text-[12px] text-slate-400">{item.date}</div>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-      <button className="mt-5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500 hover:text-brand-500 transition">{footer}</button>
+      <button
+        onClick={onFooterClick}
+        className="mt-5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500 hover:text-brand-500 transition focus:outline-none"
+      >
+        {footer}
+      </button>
     </SectionCard>
   );
 }

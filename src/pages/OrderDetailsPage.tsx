@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { ArrowLeft, Link2, Calendar, MapPin, FileText, User } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { ArrowLeft, Link2, Calendar, MapPin, FileText, User, X, Eye, Download } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 import {
   StatusBadge,
@@ -9,8 +10,11 @@ import {
   StepProgress,
   InfoBlock,
   ActivityLog,
+  FilePreview,
 } from "../components/common";
-import { orderTimeline, stepItems } from "../data";
+import { Modal } from "../components/modals/Modal";
+import { useToast } from "../components/Toast";
+import { stepItems } from "../data";
 import type { StatusKey } from "../types";
 
 export function OrderDetailsPage({
@@ -22,7 +26,43 @@ export function OrderDetailsPage({
   onBack: () => void;
   onAssign: () => void;
 }) {
-  const { orders } = useAppContext();
+  const { orders, setOrders } = useAppContext();
+  const { showToast } = useToast();
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showAuditTrailModal, setShowAuditTrailModal] = useState(false);
+
+  const [localDocs, setLocalDocs] = useState([
+    { name: "Closing_Package.pdf", meta: "4.2 MB • Uploaded 2h ago" },
+    { name: "Instructions_Sheet.pdf", meta: "1.1 MB • Uploaded 2h ago" },
+  ]);
+
+  const [localLogs, setLocalLogs] = useState([
+    { title: "Order created by System", date: "Oct 20, 2024 • 09:45 AM", tone: "blue" },
+    { title: "Notary John Doe assigned", date: "Oct 21, 2024 • 02:20 PM", tone: "slate" },
+    { title: "Documents uploaded by John Doe", date: "Oct 24, 2024 • 04:15 PM", tone: "green" },
+  ]);
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setStatusDropdownOpen(false);
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    const isAnyModalOpen = showPreviewModal || showRejectModal || showAuditTrailModal;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showPreviewModal, showRejectModal, showAuditTrailModal]);
 
   // Dynamically load the matching order or fallback to the first active order
   const activeOrder = useMemo(() => {
@@ -30,19 +70,92 @@ export function OrderDetailsPage({
     return orders.find((o) => o[0] === orderId) || orders[0];
   }, [orders, orderId]);
 
+  if (!activeOrder) return null;
+
   const [id, company, , notaryName, location, date, status, avatar] = activeOrder;
 
   // Dynamically determine the timeline progress index based on status
   const currentStep = useMemo(() => {
     if (status === "Completed") return 4;
     if (status === "Approved") return 3;
-    if (status === "Under Review") return 2;
+    if (status === "Under Review" || status === "Rejected") return 2;
     if (status === "Assigned") return 1;
     return 0; // Received
   }, [status]);
 
+  const handleStatusChange = (newStatus: string) => {
+    setOrders((prev: any) =>
+      prev.map((o: any) =>
+        o[0] === id
+          ? [o[0], o[1], o[2], o[3], o[4], o[5], newStatus, o[7]]
+          : o
+      )
+    );
+    setLocalLogs((prev) => [
+      { title: `Order status changed to "${newStatus}"`, date: "Just now", tone: "blue" },
+      ...prev,
+    ]);
+    showToast("Status Updated", { message: `Order status successfully changed to ${newStatus}.`, variant: "success" });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      setLocalDocs((prev) => [
+        ...prev,
+        {
+          name: file.name,
+          meta: `${sizeMB} MB • Uploaded just now`
+        }
+      ]);
+      setLocalLogs((prev) => [
+        { title: `Document "${file.name}" uploaded by Admin`, date: "Just now", tone: "blue" },
+        ...prev,
+      ]);
+      showToast("Document Uploaded", { message: `"${file.name}" has been uploaded.`, variant: "success" });
+    }
+  };
+
+  const handleReject = () => {
+    setOrders((prev: any) =>
+      prev.map((o: any) =>
+        o[0] === id
+          ? [o[0], o[1], o[2], o[3], o[4], o[5], "Rejected", o[7]]
+          : o
+      )
+    );
+    setLocalLogs((prev) => [
+      { title: "Scanback Rejected by Admin", date: "Just now", tone: "red" },
+      ...prev,
+    ]);
+    setShowRejectModal(false);
+    showToast("Scanback Rejected", { message: "The scanback document was marked as rejected.", variant: "error" });
+  };
+
+  const handleApprove = () => {
+    setOrders((prev: any) =>
+      prev.map((o: any) =>
+        o[0] === id
+          ? [o[0], o[1], o[2], o[3], o[4], o[5], "Approved", o[7]]
+          : o
+      )
+    );
+    setLocalLogs((prev) => [
+      { title: "Scanback Approved by Admin", date: "Just now", tone: "green" },
+      ...prev,
+    ]);
+    showToast("Scanback Approved", { message: "The scanback document was marked as approved.", variant: "success" });
+  };
+
   return (
     <div className="space-y-5">
+      <input
+        id="file-upload-input"
+        type="file"
+        className="hidden"
+        onChange={handleFileChange}
+      />
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
           <button
@@ -59,10 +172,36 @@ export function OrderDetailsPage({
             <div className="mt-1 text-[14px] text-slate-500 font-medium">Order created on {date}</div>
           </div>
         </div>
-        <div className="flex gap-3">
-          <GhostButton className="w-[140px] h-[46px] justify-center border-brand-300 text-brand-600 bg-brand-50/50 hover:bg-brand-50 px-0 rounded-lg text-sm font-semibold">
-            Change Status
-          </GhostButton>
+        <div className="flex gap-3 relative">
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setStatusDropdownOpen(!statusDropdownOpen);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-brand-300 text-brand-600 bg-brand-50/50 hover:bg-brand-50 px-5 py-3 text-sm font-semibold transition w-[140px] h-[46px] justify-center rounded-lg focus:outline-none"
+            >
+              Change Status
+            </button>
+            {statusDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white py-1 shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                {["Received", "Assigned", "Under Review", "Approved", "Completed"].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      handleStatusChange(s);
+                      setStatusDropdownOpen(false);
+                    }}
+                    className={`flex w-full items-center px-4 py-2.5 text-left text-[13px] font-medium transition ${
+                      status === s ? "text-brand-600 bg-brand-50/30 font-semibold" : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <PrimaryButton
             onClick={onAssign}
             className="w-[140px] h-[46px] justify-center px-0 rounded-lg text-sm font-semibold"
@@ -117,31 +256,19 @@ export function OrderDetailsPage({
             </div>
           </SectionCard>
 
-          <SectionCard className="p-5">
-            <div className="mb-4 flex items-center gap-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#FFF2E8] text-[#D57D38] font-bold">
-                i
-              </span>
-              Special Instructions
-            </div>
-            <div className="rounded-lg bg-[#FFF2EA] px-5 py-4 text-[14px] leading-6 text-[#7E5A49] font-medium border border-[#FFECE0]">
-              Please ensure all signatures are completed in blue ink only. Borrower requires a physical copy of the closing disclosure.
-              Verify ID against the provided scanbacks meticulously before finishing.
-            </div>
-          </SectionCard>
 
           <SectionCard className="p-5">
             <div className="mb-4 flex items-center justify-between">
               <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Title Documents</div>
-              <button className="text-[12px] font-semibold text-brand-500 hover:text-brand-600 transition focus:outline-none">
+              <button
+                onClick={() => document.getElementById("file-upload-input")?.click()}
+                className="text-[12px] font-semibold text-brand-500 hover:text-brand-600 transition focus:outline-none"
+              >
                 Add Documents
               </button>
             </div>
             <div className="space-y-4">
-              {[
-                ["Closing_Package.pdf", "4.2 MB • Uploaded 2h ago"],
-                ["Instructions_Sheet.pdf", "1.1 MB • Uploaded 2h ago"],
-              ].map(([name, meta]) => (
+              {localDocs.map(({ name, meta }) => (
                 <div
                   key={name}
                   className="flex items-center gap-4 rounded-xl border border-[#F0F3F8] px-3 py-3 bg-white hover:border-slate-300 transition"
@@ -173,16 +300,43 @@ export function OrderDetailsPage({
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-slate-800 text-[14px] truncate">Scanback_V1.pdf</div>
                   <div className="text-[13px] text-slate-500 font-medium mt-0.5">Uploaded on {date}</div>
-                  <button className="mt-1 text-[12px] font-semibold text-brand-500 hover:text-brand-600 transition focus:outline-none">
-                    Preview File
-                  </button>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <button
+                      onClick={() => setShowPreviewModal(true)}
+                      className="flex items-center gap-1.5 rounded-lg border border-[#c3daf9] bg-white px-3 py-1.5 text-[12px] font-bold text-brand-500 shadow-sm hover:bg-[#EEF5FF] hover:border-brand-500 transition focus:outline-none"
+                    >
+                      <Eye size={14} className="text-brand-500" />
+                      Preview
+                    </button>
+                    <button
+                      onClick={() => {
+                        const link = document.createElement("a");
+                        link.href = "/sample.pdf";
+                        link.download = "Scanback_V1.pdf";
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        showToast("Downloading File", { message: "Scanback_V1.pdf download started.", variant: "success" });
+                      }}
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-650 shadow-sm hover:bg-slate-50 transition focus:outline-none"
+                    >
+                      <Download size={14} className="text-slate-550 text-slate-500" />
+                      Download
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3">
-                <button className="rounded-lg border border-[#EA8D8C] py-3 text-[14px] font-semibold text-[#D94A45] hover:bg-rose-50 transition focus:outline-none">
+                <button
+                  onClick={() => setShowRejectModal(true)}
+                  className="rounded-lg border border-[#EA8D8C] py-3 text-[14px] font-semibold text-[#D94A45] hover:bg-rose-50 transition focus:outline-none"
+                >
                   Reject
                 </button>
-                <button className="rounded-lg bg-[#1EA94B] py-3 text-[14px] font-semibold text-white hover:bg-emerald-600 transition focus:outline-none">
+                <button
+                  onClick={handleApprove}
+                  className="rounded-lg bg-[#1EA94B] py-3 text-[14px] font-semibold text-white hover:bg-emerald-600 transition focus:outline-none"
+                >
                   Approve
                 </button>
               </div>
@@ -190,11 +344,196 @@ export function OrderDetailsPage({
           </SectionCard>
           <ActivityLog
             title="Activity Log"
-            items={orderTimeline.map(([title, date, tone]) => ({ title, date, tone }))}
+            items={localLogs}
             footer="View Full Audit Trail"
+            onFooterClick={() => setShowAuditTrailModal(true)}
           />
         </div>
       </div>
+
+      {showRejectModal && (
+        <Modal onClose={() => setShowRejectModal(false)} widthClass="max-w-[420px]">
+          <div className="p-6">
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h2 className="text-[20px] font-bold text-slate-900">Reject Notary Scanback</h2>
+                <p className="text-[14px] text-slate-500 mt-1">Are you sure you want to reject this document? This will update the order status to Rejected.</p>
+              </div>
+              <button onClick={() => setShowRejectModal(false)} className="text-slate-400 hover:text-slate-650 focus:outline-none">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mt-7 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="px-4 py-2.5 text-[14px] font-semibold text-slate-500 hover:text-slate-700 transition focus:outline-none"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                className="rounded-lg bg-rose-600 px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-rose-700 transition shadow-[0_8px_18px_rgba(220,38,38,0.2)] focus:outline-none"
+              >
+                Confirm Reject
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showPreviewModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 md:p-10 backdrop-blur-[3px] bg-slate-900/25 animate-in fade-in duration-300">
+          <div className="w-full max-w-[1180px] h-full max-h-[90vh] flex flex-col bg-[#0f172a] rounded-[24px] overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.3)] border border-slate-700/50">
+            {/* Professional Header Console */}
+            <div className="flex items-center justify-between px-8 py-5 bg-[#1e293b] border-b border-slate-700/50">
+              <div className="flex items-center gap-5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-600 shadow-lg shadow-brand-500/20 text-white">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <div className="text-[18px] font-black text-white tracking-tight leading-none">Scanback_V1.pdf</div>
+                  <div className="mt-1 text-[10px] font-bold text-brand-400 uppercase tracking-[0.2em]">High-Fidelity Document Inspection</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 hover:bg-rose-600 text-white transition-all duration-300 border border-slate-700 focus:outline-none"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Document Content */}
+            <div className="flex-1 bg-[#1e293b] overflow-y-auto p-8 flex justify-center items-start scrollbar-thin">
+              <div className="w-full max-w-[800px] bg-white rounded-lg shadow-2xl p-12 text-left relative min-h-[1050px] border border-slate-200 animate-in fade-in zoom-in-95 duration-300">
+                {/* PDF Content Sheet */}
+                <div className="relative font-sans text-slate-800">
+                  {/* Header */}
+                  <div className="flex justify-between items-start border-b border-slate-200 pb-6">
+                    <div>
+                      <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Closing Engage</h1>
+                      <p className="text-[11px] font-bold text-brand-500 uppercase tracking-widest mt-1">Transaction Portal</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Document ID</p>
+                      <p className="text-[13px] font-semibold text-slate-700">Scanback_V1.pdf</p>
+                    </div>
+                  </div>
+
+                  {/* Body Title */}
+                  <div className="my-10 text-center">
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">NOTARY SCANBACK</h2>
+                    <p className="text-[13px] text-slate-550 text-slate-500 mt-2 font-medium">Official Record of Completed Transaction • Oct 24, 2024</p>
+                  </div>
+
+                  {/* Details Card */}
+                  <div className="grid grid-cols-2 gap-6 my-8">
+                    <div className="rounded-xl border border-slate-150 bg-slate-50 p-4 text-left">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Closing Agent</span>
+                      <span className="text-[14px] font-bold text-slate-800 mt-1 block">Grand Peak Title Company</span>
+                    </div>
+                    <div className="rounded-xl border border-slate-150 bg-slate-50 p-4 text-left">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Partner</span>
+                      <span className="text-[14px] font-bold text-slate-800 mt-1 block">John Doe (Notary Partner)</span>
+                    </div>
+                  </div>
+
+                  {/* Legal Text */}
+                  <div className="space-y-6 text-[13px] leading-7 text-slate-600 font-normal">
+                    <h3 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Legal Disclosure & Covenants</h3>
+                    <p>
+                      This document serves as the official notary scanback record of the closing transaction. The assigned professional notary, John Doe, has verified the credentials and signatures of all signing parties in accordance with state laws and company guidelines.
+                    </p>
+                    <p>
+                      All signatures have been successfully notarized and stamped. The borrower requires a physical copy of the final Closing Disclosure, which has been dispatched via verified notary courier.
+                    </p>
+                    <div className="h-2 w-full bg-slate-100 rounded-full" />
+                    <div className="h-2 w-[92%] bg-slate-100 rounded-full" />
+                    <div className="h-2 w-[85%] bg-slate-100 rounded-full" />
+                  </div>
+
+                  {/* Stamp & Signatures */}
+                  <div className="mt-16 border-t border-slate-100 pt-8 flex justify-between items-center">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Notary Signature</span>
+                      <span className="text-[18px] font-serif italic text-blue-800 font-bold block mt-1">John Doe</span>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">Commission Expires: Oct 2028</span>
+                    </div>
+                    <div className="h-24 w-24 rounded-full border-4 border-dashed border-brand-500/30 flex items-center justify-center text-center p-2 rotate-12">
+                      <span className="text-[9px] font-black text-brand-600 uppercase tracking-wider leading-none">
+                        Official Notary Stamp
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Diagonal Confidential Watermark */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] select-none">
+                    <div className="rotate-[-45deg] text-[120px] font-black tracking-tighter">
+                      CONFIDENTIAL
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>,
+        document.body
+      )}
+
+      {showAuditTrailModal && (
+        <Modal onClose={() => setShowAuditTrailModal(false)} widthClass="max-w-[580px]">
+          <div className="p-6 text-left">
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h2 className="text-[20px] font-bold text-slate-900">Complete Order Audit Trail</h2>
+                <p className="text-[13px] text-slate-550 text-slate-500 mt-1">
+                  Comprehensive tamper-evident ledger of transactions, status transitions, and user logs for Order {id}.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAuditTrailModal(false)}
+                className="text-slate-400 hover:text-slate-650 focus:outline-none"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="max-h-[380px] overflow-y-auto pr-1 space-y-4 my-6">
+              {localLogs.map((log, index) => {
+                return (
+                  <div key={`${log.title}-${index}`} className="rounded-xl border border-slate-100 bg-[#F9FBFE] p-4 text-left">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${
+                          log.tone === "green"
+                            ? "bg-[#2E9F54]"
+                            : log.tone === "red"
+                              ? "bg-[#D25753]"
+                              : log.tone === "blue"
+                                ? "bg-brand-500"
+                                : "bg-slate-400"
+                        }`} />
+                        <span className="text-[14px] font-bold text-slate-800">{log.title}</span>
+                      </div>
+                      <span className="text-[12px] font-semibold text-slate-400">{log.date}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => setShowAuditTrailModal(false)}
+                className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-[14px] font-semibold text-slate-600 hover:bg-slate-50 transition shadow-sm focus:outline-none"
+              >
+                Close Audit Trail
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -198,7 +198,46 @@ export function NotaryTable({
   );
 }
 
-export function OrderTable({ onOpenOrder, rows }: { onOpenOrder: (id: string) => void; rows: any[] }) {
+export function OrderTable({
+  onOpenOrder,
+  onAssign,
+  rows,
+}: {
+  onOpenOrder: (id: string) => void;
+  onAssign: (id: string) => void;
+  rows: any[];
+}) {
+  const { setOrders, showConfirm } = useAppContext();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
+  const pageSize = 10;
+  const totalPages = Math.ceil(rows.length / pageSize) || 1;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rows]);
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setActiveDropdownId(null);
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
+  const handleDelete = (id: string) => {
+    showConfirm(
+      "Delete Order?",
+      `Are you sure you want to permanently delete order ${id}? This action cannot be undone.`,
+      () => setOrders((prev: any) => prev.filter((o: any) => o[0] !== id)),
+      "Delete",
+      "danger"
+    );
+  };
+
+  const paginatedRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pages = Array.from({ length: totalPages }, (_, i) => (i + 1).toString());
+
   return (
     <SectionCard className="overflow-hidden">
       <table className="w-full">
@@ -214,7 +253,7 @@ export function OrderTable({ onOpenOrder, rows }: { onOpenOrder: (id: string) =>
           </tr>
         </thead>
         <tbody>
-          {rows.map(([id, company, companyInitials, notary, location, date, status, avatar]) => (
+          {paginatedRows.map(([id, company, companyInitials, notary, location, date, status, avatar]) => (
             <tr key={id} className="border-t border-line bg-white text-[14px]">
               <td className="px-5 py-5">
                 <button
@@ -252,15 +291,58 @@ export function OrderTable({ onOpenOrder, rows }: { onOpenOrder: (id: string) =>
                   <button onClick={() => onOpenOrder(id)} className="hover:text-brand-500 focus:outline-none transition">
                     <Eye size={16} />
                   </button>
-                  <button className="hover:text-brand-500 focus:outline-none transition">
-                    <UserPlus
-                      size={16}
-                      className={id === "#ORD-90208" ? "rounded-md bg-[#EEF5FF] p-1 text-brand-500" : ""}
-                    />
+                  <button onClick={() => onAssign(id)} className="hover:text-brand-500 focus:outline-none transition">
+                    <UserPlus size={16} />
                   </button>
-                  <button className="hover:text-slate-700 focus:outline-none transition">
-                    <MoreVertical size={16} />
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDropdownId(activeDropdownId === id ? null : id);
+                      }}
+                      className="hover:text-slate-700 focus:outline-none transition"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {activeDropdownId === id && (
+                      <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white py-1 shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenOrder(id);
+                            setActiveDropdownId(null);
+                          }}
+                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition"
+                        >
+                          <Eye size={14} className="text-slate-400" />
+                          View Details
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAssign(id);
+                            setActiveDropdownId(null);
+                          }}
+                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition"
+                        >
+                          <UserPlus size={14} className="text-slate-400" />
+                          Assign Notary
+                        </button>
+                        <hr className="my-1 border-slate-100" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(id);
+                            setActiveDropdownId(null);
+                          }}
+                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-semibold text-rose-600 hover:bg-rose-50 transition"
+                        >
+                          <Trash2 size={14} className="text-rose-500" />
+                          Delete Order
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </td>
             </tr>
@@ -268,15 +350,30 @@ export function OrderTable({ onOpenOrder, rows }: { onOpenOrder: (id: string) =>
         </tbody>
       </table>
       <Pagination
-        footer={`Showing ${rows.length === 0 ? 0 : 1} to ${rows.length} of 248 orders`}
-        pages={["1", "2", "3", "...", "25"]}
-        withPrevious
+        footer={`Showing ${rows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, rows.length)} of ${rows.length} orders`}
+        pages={pages}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+        onNext={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+        withPrevious={totalPages > 1}
       />
     </SectionCard>
   );
 }
 
 export function DocumentTable({ onOpenDocument, rows }: { onOpenDocument: () => void; rows: any[] }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.ceil(rows.length / pageSize) || 1;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rows]);
+
+  const paginatedRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pages = Array.from({ length: totalPages }, (_, i) => (i + 1).toString());
+
   return (
     <SectionCard className="overflow-hidden">
       <table className="w-full">
@@ -292,7 +389,7 @@ export function DocumentTable({ onOpenDocument, rows }: { onOpenDocument: () => 
           </tr>
         </thead>
         <tbody>
-          {rows.map(([fileName, orderId, uploadedBy, date, size, status]) => (
+          {paginatedRows.map(([fileName, orderId, uploadedBy, date, size, status]) => (
             <tr key={fileName} className="border-t border-line bg-white">
               <td className="px-5 py-4">
                 <div className="flex items-center gap-4">
@@ -331,9 +428,13 @@ export function DocumentTable({ onOpenDocument, rows }: { onOpenDocument: () => 
         </tbody>
       </table>
       <Pagination
-        footer={`Showing ${rows.length === 0 ? 0 : 1} to ${rows.length} of 124 results`}
-        pages={["1", "2", "3", "...", "13"]}
-        withPrevious
+        footer={`Showing ${rows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, rows.length)} of ${rows.length} documents`}
+        pages={pages}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+        onNext={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+        withPrevious={totalPages > 1}
       />
     </SectionCard>
   );

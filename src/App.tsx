@@ -302,6 +302,10 @@ export default function App() {
                       setPage("orderDetails");
                     }}
                     onCreateOrder={() => setCreateOrderModalOpen(true)}
+                    onAssign={(orderId) => {
+                      setSelectedOrderId(orderId);
+                      setAssignModalOpen(true);
+                    }}
                   />
                 )}
                 {page === "orderDetails" && (
@@ -339,7 +343,7 @@ export default function App() {
 
           {assignModalOpen ? (
             <Modal onClose={() => setAssignModalOpen(false)} widthClass="max-w-[700px]">
-              <AssignNotaryModal onClose={() => setAssignModalOpen(false)} />
+              <AssignNotaryModal orderId={selectedOrderId} onClose={() => setAssignModalOpen(false)} />
             </Modal>
           ) : null}
 

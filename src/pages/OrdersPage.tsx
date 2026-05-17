@@ -7,10 +7,12 @@ import { OrderTable } from "../components/tables";
 export function OrdersPage({
   onOpenOrder,
   onCreateOrder,
+  onAssign,
   initialFilter = "All Orders",
 }: {
   onOpenOrder: (id: string) => void;
   onCreateOrder: () => void;
+  onAssign: (id: string) => void;
   initialFilter?: string;
 }) {
   const { orders: orderRows } = useAppContext();
@@ -129,7 +131,7 @@ export function OrdersPage({
         </SectionCard>
       </div>
 
-      <OrderTable onOpenOrder={onOpenOrder} rows={sortedRows} />
+      <OrderTable onOpenOrder={onOpenOrder} onAssign={onAssign} rows={sortedRows} />
     </div>
   );
 }
