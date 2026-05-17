@@ -154,13 +154,6 @@ export function DocumentViewPage({ document, onBack }: { document: any; onBack: 
             <Upload size={15} />
             Share
           </GhostButton>
-          <PrimaryButton
-            onClick={() => setShowVersionModal(true)}
-            className="w-[150px] h-[46px] justify-center px-0"
-          >
-            <History size={15} />
-            Version History
-          </PrimaryButton>
         </div>
       </div>
       <div className="grid grid-cols-[1.6fr_0.78fr] gap-5">
