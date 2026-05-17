@@ -330,7 +330,7 @@ export default function App() {
                     onBack={() => setPage("documents")}
                   />
                 )}
-                {page === "analytics" && <AnalyticsPage />}
+                {page === "analytics" && <AnalyticsPage onNavigate={(newPage) => setPage(newPage)} />}
                 {page === "settings" && <SettingsPage />}
                 {page === "notifications" && <NotificationsPage />}
               </div>

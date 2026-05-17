@@ -570,15 +570,67 @@ export function ChartPlaceholder() {
 }
 
 export function BarPlaceholder() {
-  const bars = [75, 120, 98, 142, 110, 58, 66];
-  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const data = [
+    { label: "Mon", value: 75 },
+    { label: "Tue", value: 120 },
+    { label: "Wed", value: 98 },
+    { label: "Thu", value: 142 },
+    { label: "Fri", value: 110 },
+    { label: "Sat", value: 58 },
+    { label: "Sun", value: 66 }
+  ];
+  const maxValue = 150;
+
   return (
-    <div className="h-[188px]">
-      <div className="flex h-[164px] items-end justify-between gap-3">
-        {bars.map((bar, index) => (
-          <div key={labels[index]} className="flex flex-1 flex-col items-center justify-end gap-3">
-            <div className={`w-full rounded-t-[18px] transition-all ${index === 2 ? "bg-brand-500" : "bg-[#EEF3FA]"}`} style={{ height: `${bar}px` }} />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">{labels[index]}</span>
+    <div className="relative h-[188px] group mt-6">
+      {/* Dynamic Tooltip */}
+      {hoveredIndex !== null && (
+        <div 
+          className="absolute z-20 pointer-events-none transition-all duration-200"
+          style={{ 
+            left: `calc(${(hoveredIndex / (data.length - 1)) * 100}% - 24px)`,
+            top: '-30px'
+          }}
+        >
+          <div className="relative bg-slate-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 slide-in-from-bottom-2">
+            {data[hoveredIndex].value} Orders
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45" />
+          </div>
+        </div>
+      )}
+
+      {/* Grid Lines */}
+      <div className="absolute inset-0 flex flex-col justify-between pt-2 pb-[30px] pointer-events-none">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="w-full border-t border-slate-100/60 border-dashed" />
+        ))}
+      </div>
+
+      <div className="relative z-10 flex h-[164px] items-end justify-between gap-3 px-1">
+        {data.map((item, index) => (
+          <div 
+            key={item.label} 
+            className="flex flex-1 flex-col items-center justify-end gap-3 cursor-pointer group/bar"
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex(null)}
+          >
+            <div 
+              className={`w-full max-w-[48px] rounded-t-[12px] transition-all duration-300 ease-out relative overflow-hidden
+                ${hoveredIndex === index ? "bg-brand-500 shadow-[0_4px_20px_rgba(49,101,207,0.3)] scale-y-105 origin-bottom" : 
+                  (hoveredIndex !== null ? "bg-[#EEF3FA] opacity-60" : (index === 3 ? "bg-brand-500 shadow-sm" : "bg-[#EEF3FA]"))}
+              `} 
+              style={{ height: `${(item.value / maxValue) * 130}px` }} 
+            >
+              {(hoveredIndex === index || (hoveredIndex === null && index === 3)) && (
+                <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20" />
+              )}
+            </div>
+            <span className={`text-[10px] font-bold uppercase tracking-[0.08em] transition-colors duration-200
+              ${hoveredIndex === index ? "text-brand-600" : "text-slate-400"}
+            `}>
+              {item.label}
+            </span>
           </div>
         ))}
       </div>
@@ -587,26 +639,98 @@ export function BarPlaceholder() {
 }
 
 export function LinePlaceholder() {
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+
+  const points = [
+    { x: 20, y: 134, val: 240, label: "Week 1" },
+    { x: 180, y: 70, val: 420, label: "Week 2" },
+    { x: 350, y: 110, val: 310, label: "Week 3" },
+    { x: 520, y: 20, val: 590, label: "Week 4" },
+    { x: 680, y: 72, val: 450, label: "Week 5" },
+  ];
+
+  const pathData = "M20 134 C90 134 110 70 180 70 C250 70 280 110 350 110 C420 110 450 20 520 20 C590 20 630 72 680 72";
+  const areaData = `${pathData} L680 186 L20 186 Z`;
+
   return (
-    <div className="relative h-[188px] overflow-hidden">
-      <svg viewBox="0 0 700 186" className="absolute inset-x-0 top-2 h-[150px] w-full">
+    <div className="relative h-[188px] w-full group mt-6" onMouseLeave={() => setHoveredPoint(null)}>
+      {/* Dynamic Tooltip */}
+      {hoveredPoint !== null && (
+        <div 
+          className="absolute z-30 pointer-events-none transition-all duration-200"
+          style={{ 
+            left: `${(points[hoveredPoint].x / 700) * 100}%`,
+            top: `${(points[hoveredPoint].y / 186) * 100}%`,
+            transform: 'translate(-50%, -150%)'
+          }}
+        >
+          <div className="relative bg-slate-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 slide-in-from-bottom-2">
+            {points[hoveredPoint].val} Orders
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45" />
+          </div>
+        </div>
+      )}
+
+      {/* SVG Canvas */}
+      <svg viewBox="0 0 700 186" className="absolute inset-x-0 top-0 h-[160px] w-full overflow-visible z-10 cursor-crosshair">
+        <defs>
+          <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1D5DC3" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#1D5DC3" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lines */}
+        {[30, 80, 130].map(y => (
+          <line key={y} x1="0" y1={y} x2="700" y2={y} stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+        ))}
+
+        {/* Fill Area */}
         <path
-          d="M40 134 C108 124 150 60 220 60 C290 60 330 110 398 112 C470 114 510 10 584 14 C628 16 654 48 676 72 L676 186 L40 186 Z"
-          fill="#D9E7FD"
+          d={areaData}
+          fill="url(#lineGradient)"
+          className="transition-all duration-500 ease-in-out opacity-0 group-hover:opacity-100"
         />
+        
+        {/* Main Line */}
         <path
-          d="M40 134 C108 124 150 60 220 60 C290 60 330 110 398 112 C470 114 510 10 584 14 C628 16 654 48 676 72"
+          d={pathData}
           fill="none"
           stroke="#1D5DC3"
-          strokeWidth="4"
+          strokeWidth="3.5"
           strokeLinecap="round"
+          className="transition-all duration-500 ease-in-out"
+          style={{ filter: "drop-shadow(0px 6px 8px rgba(29, 93, 195, 0.25))" }}
         />
+
+        {/* Interactive Points */}
+        {points.map((pt, i) => (
+          <g 
+            key={i} 
+            className="cursor-pointer"
+            onMouseEnter={() => setHoveredPoint(i)}
+          >
+            <circle cx={pt.x} cy={pt.y} r="30" fill="transparent" />
+            <circle 
+              cx={pt.x} 
+              cy={pt.y} 
+              r={hoveredPoint === i ? "6" : "0"} 
+              fill="#fff" 
+              stroke="#1D5DC3"
+              strokeWidth="3"
+              className="transition-all duration-200 ease-out"
+            />
+          </g>
+        ))}
       </svg>
-      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-        <span>Week 1</span>
-        <span>Week 2</span>
-        <span>Week 3</span>
-        <span>Week 4</span>
+
+      {/* X-Axis Labels */}
+      <div className="absolute bottom-[2px] left-0 right-0 flex justify-between px-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+        <span className="w-10 text-center">Wk 1</span>
+        <span className="w-10 text-center ml-[70px]">Wk 2</span>
+        <span className="w-10 text-center ml-[70px]">Wk 3</span>
+        <span className="w-10 text-center ml-[70px]">Wk 4</span>
+        <span className="w-10 text-center ml-[60px]">Wk 5</span>
       </div>
     </div>
   );
