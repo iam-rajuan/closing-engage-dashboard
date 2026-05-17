@@ -10,12 +10,12 @@ import {
   StepProgress,
   InfoBlock,
   ActivityLog,
-  FilePreview,
 } from "../components/common";
 import { Modal } from "../components/modals/Modal";
 import { useToast } from "../components/Toast";
 import { stepItems } from "../data";
 import type { StatusKey } from "../types";
+import { DocumentMockPreview } from "../components/DocumentMockPreview";
 
 export function OrderDetailsPage({
   orderId,
@@ -404,80 +404,13 @@ export function OrderDetailsPage({
               </button>
             </div>
 
-            {/* Document Content */}
-            <div className="flex-1 bg-[#1e293b] overflow-y-auto p-8 flex justify-center items-start scrollbar-thin">
-              <div className="w-full max-w-[800px] bg-white rounded-lg shadow-2xl p-12 text-left relative min-h-[1050px] border border-slate-200 animate-in fade-in zoom-in-95 duration-300">
-                {/* PDF Content Sheet */}
-                <div className="relative font-sans text-slate-800">
-                  {/* Header */}
-                  <div className="flex justify-between items-start border-b border-slate-200 pb-6">
-                    <div>
-                      <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Closing Engage</h1>
-                      <p className="text-[11px] font-bold text-brand-500 uppercase tracking-widest mt-1">Transaction Portal</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Document ID</p>
-                      <p className="text-[13px] font-semibold text-slate-700">Scanback_V1.pdf</p>
-                    </div>
-                  </div>
-
-                  {/* Body Title */}
-                  <div className="my-10 text-center">
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">NOTARY SCANBACK</h2>
-                    <p className="text-[13px] text-slate-550 text-slate-500 mt-2 font-medium">Official Record of Completed Transaction • Oct 24, 2024</p>
-                  </div>
-
-                  {/* Details Card */}
-                  <div className="grid grid-cols-2 gap-6 my-8">
-                    <div className="rounded-xl border border-slate-150 bg-slate-50 p-4 text-left">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Closing Agent</span>
-                      <span className="text-[14px] font-bold text-slate-800 mt-1 block">Grand Peak Title Company</span>
-                    </div>
-                    <div className="rounded-xl border border-slate-150 bg-slate-50 p-4 text-left">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Partner</span>
-                      <span className="text-[14px] font-bold text-slate-800 mt-1 block">John Doe (Notary Partner)</span>
-                    </div>
-                  </div>
-
-                  {/* Legal Text */}
-                  <div className="space-y-6 text-[13px] leading-7 text-slate-600 font-normal">
-                    <h3 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Legal Disclosure & Covenants</h3>
-                    <p>
-                      This document serves as the official notary scanback record of the closing transaction. The assigned professional notary, John Doe, has verified the credentials and signatures of all signing parties in accordance with state laws and company guidelines.
-                    </p>
-                    <p>
-                      All signatures have been successfully notarized and stamped. The borrower requires a physical copy of the final Closing Disclosure, which has been dispatched via verified notary courier.
-                    </p>
-                    <div className="h-2 w-full bg-slate-100 rounded-full" />
-                    <div className="h-2 w-[92%] bg-slate-100 rounded-full" />
-                    <div className="h-2 w-[85%] bg-slate-100 rounded-full" />
-                  </div>
-
-                  {/* Stamp & Signatures */}
-                  <div className="mt-16 border-t border-slate-100 pt-8 flex justify-between items-center">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Notary Signature</span>
-                      <span className="text-[18px] font-serif italic text-blue-800 font-bold block mt-1">John Doe</span>
-                      <span className="text-[11px] text-slate-400 block mt-0.5">Commission Expires: Oct 2028</span>
-                    </div>
-                    <div className="h-24 w-24 rounded-full border-4 border-dashed border-brand-500/30 flex items-center justify-center text-center p-2 rotate-12">
-                      <span className="text-[9px] font-black text-brand-600 uppercase tracking-wider leading-none">
-                        Official Notary Stamp
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Diagonal Confidential Watermark */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] select-none">
-                    <div className="rotate-[-45deg] text-[120px] font-black tracking-tighter">
-                      CONFIDENTIAL
-                    </div>
-                  </div>
-                </div>
+            <div className="flex-1 bg-[#1e293b] p-8 flex justify-center items-center overflow-auto">
+              <div className="w-[390px] h-[520px] rounded-lg border border-slate-700/50 bg-white shadow-2xl overflow-hidden shrink-0">
+                <DocumentMockPreview fileName="Scanback_V1.pdf" />
+              </div>
             </div>
           </div>
-        </div>
-      </div>,
+        </div>,
         document.body
       )}
 

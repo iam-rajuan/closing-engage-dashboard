@@ -109,14 +109,14 @@ export function SimpleStatCard({
 }) {
   const tone = icon === "approval" ? "amber" : icon === "shield" ? "green" : "blue";
   return (
-    <SectionCard className="p-5">
-      <div className="mb-7 flex items-start justify-between">
+    <SectionCard className="p-4">
+      <div className="mb-3.5 flex items-start justify-between">
         <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">{title}</div>
         <IconBadge tone={tone}><FileText size={18} /></IconBadge>
       </div>
-      <div className="text-[18px] font-bold">{value}</div>
+      <div className="text-[18px] font-bold text-slate-900 leading-none">{value}</div>
       {progress ? (
-        <div className="mt-4 h-1.5 w-20 rounded-full bg-[#E5EAF2]">
+        <div className="mt-3.5 h-1.5 w-24 rounded-full bg-[#E5EAF2]">
           <div className="h-1.5 rounded-full bg-brand-500" style={{ width: `${progress}%` }} />
         </div>
       ) : (

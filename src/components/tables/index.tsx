@@ -362,7 +362,17 @@ export function OrderTable({
   );
 }
 
-export function DocumentTable({ onOpenDocument, rows }: { onOpenDocument: () => void; rows: any[] }) {
+export function DocumentTable({
+  onOpenDocument,
+  onDeleteDocument,
+  onDownloadDocument,
+  rows,
+}: {
+  onOpenDocument: (row: any) => void;
+  onDeleteDocument: (fileName: string) => void;
+  onDownloadDocument: (fileName: string) => void;
+  rows: any[];
+}) {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   const totalPages = Math.ceil(rows.length / pageSize) || 1;
@@ -396,7 +406,12 @@ export function DocumentTable({ onOpenDocument, rows }: { onOpenDocument: () => 
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FFF0EF] text-[#EB5B53]">
                     <FileText size={16} />
                   </div>
-                  <div className="font-semibold text-slate-800">{fileName}</div>
+                  <button
+                    onClick={() => onOpenDocument([fileName, orderId, uploadedBy, date, size, status])}
+                    className="font-semibold text-slate-800 text-left hover:text-brand-500 transition focus:outline-none"
+                  >
+                    {fileName}
+                  </button>
                 </div>
               </td>
               <td className="px-5 py-4 font-semibold text-brand-500">{orderId}</td>
@@ -412,13 +427,22 @@ export function DocumentTable({ onOpenDocument, rows }: { onOpenDocument: () => 
               </td>
               <td className="px-5 py-4">
                 <div className="flex items-center gap-5 text-slate-500">
-                  <button onClick={onOpenDocument} className="hover:text-brand-500 focus:outline-none transition">
+                  <button
+                    onClick={() => onOpenDocument([fileName, orderId, uploadedBy, date, size, status])}
+                    className="hover:text-brand-500 focus:outline-none transition"
+                  >
                     <Eye size={16} />
                   </button>
-                  <button className="hover:text-brand-500 focus:outline-none transition">
+                  <button
+                    onClick={() => onDownloadDocument(fileName)}
+                    className="hover:text-brand-500 focus:outline-none transition"
+                  >
                     <Download size={16} />
                   </button>
-                  <button className="hover:text-brand-500 focus:outline-none transition">
+                  <button
+                    onClick={() => onDeleteDocument(fileName)}
+                    className="hover:text-brand-500 focus:outline-none transition"
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>

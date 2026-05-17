@@ -99,6 +99,7 @@ export default function App() {
   const [editingNotary, setEditingNotary] = useState<NotaryUser | null>(null);
   const [orders, setOrders] = useState<any[]>([...initialOrderRows]);
   const [documents, setDocuments] = useState<any[]>([...initialDocumentRows]);
+  const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(() => {
     return localStorage.getItem("dashboard_selected_order_id");
@@ -315,8 +316,20 @@ export default function App() {
                     onAssign={() => setAssignModalOpen(true)}
                   />
                 )}
-                {page === "documents" && <DocumentsPage onOpenDocument={() => setPage("documentView")} />}
-                {page === "documentView" && <DocumentViewPage onBack={() => setPage("documents")} />}
+                {page === "documents" && (
+                  <DocumentsPage
+                    onOpenDocument={(doc) => {
+                      setSelectedDocument(doc);
+                      setPage("documentView");
+                    }}
+                  />
+                )}
+                {page === "documentView" && (
+                  <DocumentViewPage
+                    document={selectedDocument}
+                    onBack={() => setPage("documents")}
+                  />
+                )}
                 {page === "analytics" && <AnalyticsPage />}
                 {page === "settings" && <SettingsPage />}
                 {page === "notifications" && <NotificationsPage />}
