@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link2, ShieldCheck } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
+import { usersApi } from "../../api/users";
 import type { CompanyUser } from "../../types";
 import {
   ModalHeader,
@@ -41,12 +42,13 @@ export function AddCompanyUserModal({
     verify: companyToEdit ? !!companyToEdit.verify : (prefillData ? true : false),
   });
   const [error, setError] = useState("");
+  const nextStatus: CompanyUser["status"] = form.active ? "Active" : "Inactive";
 
   const updateField = (field: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (
       !form.companyName ||
       !form.businessEmail ||
@@ -59,58 +61,36 @@ export function AddCompanyUserModal({
       return;
     }
 
-    if (isEdit && companyToEdit) {
-      setCompanies((prev) =>
-        prev.map((c) =>
-          c.id === companyToEdit.id
-            ? {
-                ...c,
-                companyName: form.companyName,
-                contactPerson: form.contactPerson,
-                businessEmail: form.businessEmail,
-                phone: form.phone,
-                status: form.active ? "Active" : "Inactive",
-                verify: form.verify,
-                address: form.address,
-                contactEmail: form.contactEmail,
-                userName: form.userName,
-                password: form.password || c.password,
-                sendInvite: form.sendInvite,
-                initials: form.companyName.substring(0, 2).toUpperCase(),
-              }
-            : c
-        )
-      );
-    } else {
-      const newCompany: CompanyUser = {
-        id: `COMP-${Date.now()}`,
-        initials: form.companyName.substring(0, 2).toUpperCase(),
-        color: "bg-[#DCE7FF] text-[#3165CF]",
-        companyName: form.companyName,
-        contactPerson: form.contactPerson,
-        businessEmail: form.businessEmail,
-        phone: form.phone,
-        status: form.active ? "Active" : "Inactive",
-        verify: form.verify,
-        createdDate: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        address: form.address,
-        contactEmail: form.contactEmail,
-        userName: form.userName,
-        password: form.password,
-        sendInvite: form.sendInvite,
-      };
-      setCompanies((prev) => [newCompany, ...prev]);
+    const payload = {
+      companyName: form.companyName,
+      contactPerson: form.contactPerson,
+      businessEmail: form.businessEmail,
+      phone: form.phone,
+      status: nextStatus,
+      verify: form.verify,
+      address: form.address,
+      contactEmail: form.contactEmail,
+      userName: form.userName,
+      password: form.password,
+      sendInvite: form.sendInvite,
+    };
 
-      // Promote pending request status to Approved
-      if (requestId) {
-        setRegistrationRequests((prev) =>
-          prev.map((r) => (r.id === requestId ? { ...r, status: "Approved" } : r))
-        );
+    try {
+      if (isEdit && companyToEdit) {
+        const updatedCompany = await usersApi.updateCompany(companyToEdit.id, payload);
+        setCompanies((prev) => prev.map((c) => (c.id === companyToEdit.id ? updatedCompany : c)));
+      } else {
+        const newCompany = await usersApi.createCompany(payload);
+        setCompanies((prev) => [newCompany, ...prev]);
+
+        if (requestId) {
+          const updatedRequest = await usersApi.updateAccessRequestStatus(requestId, "Approved");
+          setRegistrationRequests((prev) => prev.map((r) => (r.id === requestId ? updatedRequest : r)));
+        }
       }
+    } catch (apiError) {
+      setError(apiError instanceof Error ? apiError.message : "Failed to save company user.");
+      return;
     }
 
     setError("");

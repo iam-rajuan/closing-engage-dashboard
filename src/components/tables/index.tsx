@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Eye, Pencil, Trash2, MoreVertical, UserPlus, Download, FileText } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
+import { usersApi } from "../../api/users";
 import { StatusBadge, Pagination, Avatar, SectionCard } from "../common";
 import { profileGradients } from "../../data";
 import type { StatusKey, CompanyUser, NotaryUser } from "../../types";
@@ -27,7 +28,11 @@ export function CompanyTable({
     showConfirm(
       "Delete Company?",
       `Are you sure you want to remove ${name} from the system? This action will permanently delete all associated data.`,
-      () => setCompanies((prev) => prev.filter((c) => c.id !== id)),
+      () => {
+        void usersApi.deleteCompany(id).then(() => {
+          setCompanies((prev) => prev.filter((c) => c.id !== id));
+        });
+      },
       "Delete",
       "danger"
     );
@@ -121,7 +126,11 @@ export function NotaryTable({
     showConfirm(
       "Delete Notary?",
       `Are you sure you want to remove ${name} from the network? This will revoke their access to the portal immediately.`,
-      () => setNotaries((prev) => prev.filter((n) => n.id !== id)),
+      () => {
+        void usersApi.deleteNotary(id).then(() => {
+          setNotaries((prev) => prev.filter((n) => n.id !== id));
+        });
+      },
       "Delete",
       "danger"
     );

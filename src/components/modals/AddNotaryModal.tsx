@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar, MapPin, Link2, ShieldCheck } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
+import { usersApi } from "../../api/users";
 import type { NotaryUser } from "../../types";
 import {
   ModalHeader,
@@ -39,12 +40,13 @@ export function AddNotaryModal({
     verify: notaryToEdit ? !!notaryToEdit.verify : (prefillData ? true : false),
   });
   const [error, setError] = useState("");
+  const nextStatus: NotaryUser["status"] = form.active ? "Active" : "Inactive";
 
   const updateField = (field: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (
       !form.fullName ||
       !form.email ||
@@ -58,59 +60,37 @@ export function AddNotaryModal({
       return;
     }
 
-    if (isEdit && notaryToEdit) {
-      setNotaries((prev) =>
-        prev.map((n) =>
-          n.id === notaryToEdit.id
-            ? {
-                ...n,
-                fullName: form.fullName,
-                email: form.email,
-                phone: form.phone,
-                license: form.license,
-                expiry: form.expiry,
-                serviceArea: form.serviceArea,
-                status: form.active ? "Active" : "Inactive",
-                verify: form.verify,
-                userName: form.userName,
-                password: form.password || n.password,
-                sendInvite: form.sendInvite,
-                initials: form.fullName.substring(0, 2).toUpperCase(),
-              }
-            : n
-        )
-      );
-    } else {
-      const newNotary: NotaryUser = {
-        id: `NOT-${Date.now()}`,
-        initials: form.fullName.substring(0, 2).toUpperCase(),
-        color: "bg-[#FFE2D3] text-[#C66B33]",
-        fullName: form.fullName,
-        specialty: "Mobile Loan Signing Agent",
-        email: form.email,
-        phone: form.phone,
-        license: form.license,
-        status: form.active ? "Active" : "Inactive",
-        verify: form.verify,
-        createdDate: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        expiry: form.expiry,
-        serviceArea: form.serviceArea,
-        userName: form.userName,
-        password: form.password,
-        sendInvite: form.sendInvite,
-      };
-      setNotaries((prev) => [newNotary, ...prev]);
+    const payload = {
+      fullName: form.fullName,
+      email: form.email,
+      phone: form.phone,
+      license: form.license,
+      expiry: form.expiry,
+      serviceArea: form.serviceArea,
+      userName: form.userName,
+      password: form.password,
+      sendInvite: form.sendInvite,
+      status: nextStatus,
+      verify: form.verify,
+      specialty: "Mobile Loan Signing Agent",
+    };
 
-      // Promote pending request status to Approved
-      if (requestId) {
-        setRegistrationRequests((prev) =>
-          prev.map((r) => (r.id === requestId ? { ...r, status: "Approved" } : r))
-        );
+    try {
+      if (isEdit && notaryToEdit) {
+        const updatedNotary = await usersApi.updateNotary(notaryToEdit.id, payload);
+        setNotaries((prev) => prev.map((n) => (n.id === notaryToEdit.id ? updatedNotary : n)));
+      } else {
+        const newNotary = await usersApi.createNotary(payload);
+        setNotaries((prev) => [newNotary, ...prev]);
+
+        if (requestId) {
+          const updatedRequest = await usersApi.updateAccessRequestStatus(requestId, "Approved");
+          setRegistrationRequests((prev) => prev.map((r) => (r.id === requestId ? updatedRequest : r)));
+        }
       }
+    } catch (apiError) {
+      setError(apiError instanceof Error ? apiError.message : "Failed to save notary user.");
+      return;
     }
 
     setError("");

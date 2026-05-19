@@ -10,6 +10,7 @@ import {
 } from "./data";
 import type { PageKey, CompanyUser, NotaryUser } from "./types";
 import { adminAuth } from "./api/auth";
+import { usersApi } from "./api/users";
 import { ToastProvider } from "./components/Toast";
 import { AppContext, AdminProfile } from "./context/AppContext";
 import { Sidebar, TopNavbar } from "./components/layout";
@@ -73,6 +74,8 @@ export default function App() {
       try {
         const session = await adminAuth.fetchMe();
         setAdminProfile(session.admin.profile);
+        const accessRequests = await usersApi.getAccessRequests();
+        setRegistrationRequests(accessRequests);
         setIsAuthenticated(true);
       } catch {
         adminAuth.clearToken();

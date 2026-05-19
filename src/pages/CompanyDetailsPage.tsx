@@ -1,4 +1,5 @@
 import { useAppContext } from "../context/AppContext";
+import { usersApi } from "../api/users";
 import {
   PageHeader,
   GhostButton,
@@ -30,13 +31,11 @@ export function CompanyDetailsPage({
       `${action} Company?`,
       `Are you sure you want to ${action.toLowerCase()} ${company.companyName}? This will toggle their system access status.`,
       () => {
-        setCompanies((prev) =>
-          prev.map((c) =>
-            c.id === company.id
-              ? { ...c, status: c.status === "Active" ? "Inactive" : "Active" }
-              : c
-          )
-        );
+        void usersApi
+          .updateCompany(company.id, { status: company.status === "Active" ? "Inactive" : "Active" })
+          .then((updatedCompany) => {
+            setCompanies((prev) => prev.map((c) => (c.id === company.id ? updatedCompany : c)));
+          });
       },
       action,
       company.status === "Active" ? "warning" : "info"
@@ -53,13 +52,9 @@ export function CompanyDetailsPage({
       `${isCurrentlyVerified ? "Revoke Verification" : "Verify Company"}?`,
       `Are you sure you want to ${isCurrentlyVerified ? "revoke verification for" : "verify and approve"} ${company.companyName}? This will instantly update their system authorization status.`,
       () => {
-        setCompanies((prev) =>
-          prev.map((c) =>
-            c.id === company.id
-              ? { ...c, verify: !isCurrentlyVerified }
-              : c
-          )
-        );
+        void usersApi.updateCompany(company.id, { verify: !isCurrentlyVerified }).then((updatedCompany) => {
+          setCompanies((prev) => prev.map((c) => (c.id === company.id ? updatedCompany : c)));
+        });
       },
       isCurrentlyVerified ? "Revoke" : "Verify",
       variant
@@ -72,8 +67,10 @@ export function CompanyDetailsPage({
       "Delete Company?",
       `Are you sure you want to permanently delete ${company.companyName}? This action will remove all associated system data.`,
       () => {
-        setCompanies((prev) => prev.filter((c) => c.id !== company.id));
-        onBack();
+        void usersApi.deleteCompany(company.id).then(() => {
+          setCompanies((prev) => prev.filter((c) => c.id !== company.id));
+          onBack();
+        });
       },
       "Delete",
       "danger"

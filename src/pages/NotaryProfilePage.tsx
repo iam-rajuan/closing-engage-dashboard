@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAppContext } from "../context/AppContext";
+import { usersApi } from "../api/users";
 import { useToast } from "../components/Toast";
 import {
   GhostButton,
@@ -80,20 +81,14 @@ export function NotaryProfilePage({
       `Are you sure you want to ${isCurrentlyVerified ? "revoke verification for" : "verify and approve"} ${notary.fullName}? This will instantly update their system authorization status.`,
       () => {
         setIsVerifying(true);
-        setTimeout(() => {
-          setNotaries((prev) =>
-            prev.map((n) =>
-              n.id === notary.id
-                ? { ...n, verify: !isCurrentlyVerified }
-                : n
-            )
-          );
+        void usersApi.updateNotary(notary.id, { verify: !isCurrentlyVerified }).then((updatedNotary) => {
+          setNotaries((prev) => prev.map((n) => (n.id === notary.id ? updatedNotary : n)));
           setIsVerifying(false);
           showToast(
             `Notary successfully ${isCurrentlyVerified ? "verification revoked" : "verified & certified"}!`,
             { variant: "success" }
           );
-        }, 850);
+        });
       },
       isCurrentlyVerified ? "Revoke" : "Verify",
       variant
@@ -111,20 +106,16 @@ export function NotaryProfilePage({
       `Are you sure you want to ${isCurrentlyActive ? "deactivate" : "activate"} ${notary.fullName}? This will instantly update their portal access status.`,
       () => {
         setIsVerifying(true);
-        setTimeout(() => {
-          setNotaries((prev) =>
-            prev.map((n) =>
-              n.id === notary.id
-                ? { ...n, status: isCurrentlyActive ? "Inactive" : "Active" }
-                : n
-            )
-          );
+        void usersApi
+          .updateNotary(notary.id, { status: isCurrentlyActive ? "Inactive" : "Active" })
+          .then((updatedNotary) => {
+            setNotaries((prev) => prev.map((n) => (n.id === notary.id ? updatedNotary : n)));
           setIsVerifying(false);
           showToast(
             `Notary successfully ${isCurrentlyActive ? "deactivated" : "activated"}!`,
             { variant: "success" }
           );
-        }, 850);
+        });
       },
       actionText,
       variant
@@ -138,11 +129,11 @@ export function NotaryProfilePage({
       `Are you sure you want to permanently delete ${notary.fullName}? This will revoke their platform credentials immediately and cannot be undone.`,
       () => {
         setIsDeleting(true);
-        setTimeout(() => {
+        void usersApi.deleteNotary(notary.id).then(() => {
           setNotaries((prev) => prev.filter((n) => n.id !== notary.id));
           setIsDeleting(false);
           onBack();
-        }, 800);
+        });
       },
       "Delete",
       "danger"

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 import { PageHeader, UsersTabs, FilterBar, SimpleStatCard, SectionCard } from "../components/common";
+import { usersApi } from "../api/users";
 import { useToast } from "../components/Toast";
 import type { RegistrationRequest, CompanyUser, NotaryUser } from "../types";
 
@@ -85,12 +86,14 @@ export function UsersRequestsPage({
       "Decline Access Request",
       `Are you sure you want to decline the access request submitted by ${req.fullName}?`,
       () => {
-        setRegistrationRequests(prev => 
-          prev.map(r => r.id === req.id ? { ...r, status: "Declined" } : r)
-        );
-        showToast("Request Declined", { 
-          message: `The registration request from ${req.fullName} has been marked as declined.`, 
-          variant: "error" 
+        void usersApi.updateAccessRequestStatus(req.id, "Declined").then((updatedRequest) => {
+          setRegistrationRequests(prev => 
+            prev.map(r => r.id === req.id ? updatedRequest : r)
+          );
+          showToast("Request Declined", { 
+            message: `The registration request from ${req.fullName} has been marked as declined.`, 
+            variant: "error" 
+          });
         });
       },
       "Decline Request",
