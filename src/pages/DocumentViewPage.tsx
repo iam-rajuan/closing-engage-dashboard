@@ -22,6 +22,7 @@ import { useToast } from "../components/Toast";
 import type { StatusKey } from "../types";
 import { Modal } from "../components/modals/Modal";
 import { DocumentMockPreview } from "../components/DocumentMockPreview";
+import { documentsApi } from "../api/documents";
 
 export function DocumentViewPage({ document, onBack }: { document: any; onBack: () => void }) {
   const { documents: documentRows, setDocuments } = useAppContext();
@@ -35,6 +36,7 @@ export function DocumentViewPage({ document, onBack }: { document: any; onBack: 
   const date = liveDoc ? liveDoc[3] : "Oct 24, 2023";
   const size = liveDoc ? liveDoc[4] : "1.2 MB";
   const status = liveDoc ? liveDoc[5] : "Pending";
+  const documentId = liveDoc ? liveDoc[6] : undefined;
 
   // Reactive micro-states
   const [zoom, setZoom] = useState(100);
@@ -58,28 +60,39 @@ export function DocumentViewPage({ document, onBack }: { document: any; onBack: 
     setZoom((z) => Math.min(200, z + 10));
   };
 
-  const handleApprove = () => {
-    setDocuments((prev: any) =>
-      prev.map((d: any) =>
-        d[0] === fileName ? [d[0], d[1], d[2], d[3], d[4], "Approved"] : d
-      )
-    );
-    showToast(`Document "${fileName}" approved successfully!`, { variant: "success" });
+  const handleApprove = async () => {
+    try {
+      const updatedRow = documentId ? await documentsApi.updateStatus(documentId, "Approved") : null;
+      setDocuments((prev: any) =>
+        prev.map((d: any) =>
+          d[0] === fileName ? updatedRow || [d[0], d[1], d[2], d[3], d[4], "Approved"] : d
+        )
+      );
+      showToast(`Document "${fileName}" approved successfully!`, { variant: "success" });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Document approval failed", { variant: "error" });
+    }
   };
 
-  const handleReject = () => {
-    setDocuments((prev: any) =>
-      prev.map((d: any) =>
-        d[0] === fileName ? [d[0], d[1], d[2], d[3], d[4], "Rejected"] : d
-      )
-    );
-    showToast(`Document "${fileName}" rejected and changes requested.`, { variant: "error" });
+  const handleReject = async () => {
+    try {
+      const updatedRow = documentId ? await documentsApi.updateStatus(documentId, "Rejected") : null;
+      setDocuments((prev: any) =>
+        prev.map((d: any) =>
+          d[0] === fileName ? updatedRow || [d[0], d[1], d[2], d[3], d[4], "Rejected"] : d
+        )
+      );
+      showToast(`Document "${fileName}" rejected and changes requested.`, { variant: "error" });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Document rejection failed", { variant: "error" });
+    }
   };
 
   const handleDownload = async () => {
     showToast(`Downloading "${fileName}"...`, { variant: "info" });
     try {
-      const response = await fetch("/sample.pdf");
+      const url = documentId ? await documentsApi.getDownloadUrl(documentId) : "/sample.pdf";
+      const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       

@@ -4,6 +4,7 @@ import { useAppContext } from "../context/AppContext";
 import { PageHeader, DropdownField, SimpleStatCard } from "../components/common";
 import { DocumentTable } from "../components/tables";
 import { useToast } from "../components/Toast";
+import { documentsApi } from "../api/documents";
 
 export function DocumentsPage({ onOpenDocument }: { onOpenDocument: (doc: any) => void }) {
   const { documents: documentRows, setDocuments, showConfirm } = useAppContext();
@@ -39,12 +40,22 @@ export function DocumentsPage({ onOpenDocument }: { onOpenDocument: (doc: any) =
   });
 
   const handleDeleteDocument = (fileName: string) => {
+    const targetDocument = documentRows.find((doc: any) => doc[0] === fileName);
+    const documentId = targetDocument?.[6];
+
     showConfirm(
       "Delete Document?",
       `Are you sure you want to permanently remove ${fileName} from the transaction pipeline? This action cannot be undone.`,
-      () => {
-        setDocuments((prev: any[]) => prev.filter((doc) => doc[0] !== fileName));
-        showToast("Document deleted successfully", { variant: "success" });
+      async () => {
+        try {
+          if (documentId) {
+            await documentsApi.deleteDocument(documentId);
+          }
+          setDocuments((prev: any[]) => prev.filter((doc) => doc[0] !== fileName));
+          showToast("Document deleted successfully", { variant: "success" });
+        } catch (error) {
+          showToast(error instanceof Error ? error.message : "Document delete failed", { variant: "error" });
+        }
       },
       "Delete",
       "danger"
@@ -54,7 +65,10 @@ export function DocumentsPage({ onOpenDocument }: { onOpenDocument: (doc: any) =
   const handleDownloadDocument = async (fileName: string) => {
     showToast(`Downloading ${fileName}...`, { variant: "info" });
     try {
-      const response = await fetch("/sample.pdf");
+      const targetDocument = documentRows.find((doc: any) => doc[0] === fileName);
+      const documentId = targetDocument?.[6];
+      const url = documentId ? await documentsApi.getDownloadUrl(documentId) : "/sample.pdf";
+      const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       

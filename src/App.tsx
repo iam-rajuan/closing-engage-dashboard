@@ -12,6 +12,7 @@ import type { PageKey, CompanyUser, NotaryUser } from "./types";
 import { adminAuth } from "./api/auth";
 import { usersApi } from "./api/users";
 import { ordersApi } from "./api/orders";
+import { documentsApi } from "./api/documents";
 import { ToastProvider } from "./components/Toast";
 import { AppContext, AdminProfile } from "./context/AppContext";
 import { Sidebar, TopNavbar } from "./components/layout";
@@ -79,6 +80,8 @@ export default function App() {
         setRegistrationRequests(accessRequests);
         const fetchedOrders = await ordersApi.getOrders();
         setOrders(fetchedOrders);
+        const fetchedDocuments = await documentsApi.getDocuments();
+        setDocuments(fetchedDocuments);
         setIsAuthenticated(true);
       } catch {
         adminAuth.clearToken();
@@ -272,6 +275,8 @@ export default function App() {
           setAdminProfile(session.admin.profile);
           const fetchedOrders = await ordersApi.getOrders();
           setOrders(fetchedOrders);
+          const fetchedDocuments = await documentsApi.getDocuments();
+          setDocuments(fetchedDocuments);
           setIsAuthenticated(true);
           setPage("dashboard");
         }}

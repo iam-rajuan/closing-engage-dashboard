@@ -11,6 +11,7 @@ import {
   quickActions,
 } from "../data";
 import type { MetricCard } from "../data";
+import { adminAuth } from "./auth";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -45,6 +46,34 @@ export interface DashboardData {
 // ── Helpers ────────────────────────────────────────────────────────
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ||
+  "http://localhost:5000/api/v1";
+
+interface ApiEnvelope<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+  const token = adminAuth.getToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  const result = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
+
+  if (!response.ok || !result?.success) {
+    throw new Error(result?.message || "Request failed");
+  }
+
+  return result.data;
+};
 
 // ── Mock Data ──────────────────────────────────────────────────────
 
@@ -129,8 +158,11 @@ export async function fetchActiveUsersTrend(
  * Replace body with: const res = await fetch('/api/notifications'); return res.json();
  */
 export async function fetchNotifications(): Promise<NotificationItem[]> {
-  await delay(400);
-  return [...mockNotifications];
+  try {
+    return await request<NotificationItem[]>("/notifications");
+  } catch {
+    return [...mockNotifications];
+  }
 }
 
 /**
@@ -138,17 +170,14 @@ export async function fetchNotifications(): Promise<NotificationItem[]> {
  * Replace body with: await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
  */
 export async function markNotificationRead(id: string): Promise<void> {
-  await delay(200);
-  const notification = mockNotifications.find((n) => n.id === id);
-  if (notification) notification.read = true;
+  await request<NotificationItem>(`/notifications/${encodeURIComponent(id)}/read`, { method: "PATCH" });
 }
 
 /**
  * Mark all notifications as read
  */
 export async function markAllNotificationsRead(): Promise<void> {
-  await delay(200);
-  mockNotifications.forEach((n) => (n.read = true));
+  await request<Record<string, never>>("/notifications/read-all", { method: "PATCH" });
 }
 
 /**
