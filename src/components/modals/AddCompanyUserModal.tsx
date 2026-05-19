@@ -15,26 +15,30 @@ export function AddCompanyUserModal({
   onClose,
   onSwitchType,
   companyToEdit,
+  prefillData,
+  requestId,
 }: {
   onClose: () => void;
   onSwitchType: () => void;
   companyToEdit?: CompanyUser | null;
+  prefillData?: Partial<CompanyUser> | null;
+  requestId?: string | null;
 }) {
-  const { setCompanies } = useAppContext();
+  const { setCompanies, setRegistrationRequests } = useAppContext();
   const isEdit = !!companyToEdit;
 
   const [form, setForm] = useState({
-    companyName: companyToEdit?.companyName || "",
-    businessEmail: companyToEdit?.businessEmail || "",
-    phone: companyToEdit?.phone || "",
-    contactPerson: companyToEdit?.contactPerson || "",
-    address: companyToEdit?.address || "",
-    contactEmail: companyToEdit?.contactEmail || "",
-    userName: companyToEdit?.userName || "",
-    password: companyToEdit?.password || "",
-    sendInvite: companyToEdit?.sendInvite || false,
+    companyName: companyToEdit?.companyName || prefillData?.companyName || "",
+    businessEmail: companyToEdit?.businessEmail || prefillData?.businessEmail || "",
+    phone: companyToEdit?.phone || prefillData?.phone || "",
+    contactPerson: companyToEdit?.contactPerson || prefillData?.contactPerson || "",
+    address: companyToEdit?.address || prefillData?.address || "",
+    contactEmail: companyToEdit?.contactEmail || prefillData?.contactEmail || "",
+    userName: companyToEdit?.userName || prefillData?.userName || "",
+    password: companyToEdit?.password || prefillData?.password || "",
+    sendInvite: companyToEdit?.sendInvite || prefillData?.sendInvite || false,
     active: companyToEdit ? companyToEdit.status !== "Inactive" : true,
-    verify: companyToEdit ? !!companyToEdit.verify : false,
+    verify: companyToEdit ? !!companyToEdit.verify : (prefillData ? true : false),
   });
   const [error, setError] = useState("");
 
@@ -100,6 +104,13 @@ export function AddCompanyUserModal({
         sendInvite: form.sendInvite,
       };
       setCompanies((prev) => [newCompany, ...prev]);
+
+      // Promote pending request status to Approved
+      if (requestId) {
+        setRegistrationRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? { ...r, status: "Approved" } : r))
+        );
+      }
     }
 
     setError("");
@@ -180,13 +191,30 @@ export function AddCompanyUserModal({
               value={form.userName}
               onChange={(value) => updateField("userName", value)}
             />
-            <ModalInput
-              label="Confirm Password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={(value) => updateField("password", value)}
-              type="password"
-            />
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-slate-600">Password Setup</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const generated = Math.random().toString(36).substring(2, 10).toUpperCase() + Math.floor(100 + Math.random() * 900);
+                    updateField("password", generated);
+                  }}
+                  className="text-[11px] font-extrabold text-brand-500 hover:text-brand-600 uppercase tracking-wider cursor-pointer"
+                >
+                  Generate Password
+                </button>
+              </div>
+              <div className="flex h-11 items-center gap-3 rounded-lg border border-[#E1E7F0] bg-[#F5F8FC] px-4">
+                <input
+                  type="text"
+                  value={form.password}
+                  onChange={(event) => updateField("password", event.target.value)}
+                  placeholder="••••••••"
+                  className="w-full border-0 bg-transparent text-[14px] text-slate-700 outline-none placeholder:text-slate-400 font-medium"
+                />
+              </div>
+            </div>
           </div>
           <ModalCheckbox
             checked={form.sendInvite}

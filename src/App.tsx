@@ -6,6 +6,7 @@ import {
   notaryRows as initialNotaryRows,
   orderRows as initialOrderRows,
   pageGroups,
+  initialRegistrationRequests,
 } from "./data";
 import type { PageKey, CompanyUser, NotaryUser } from "./types";
 import { ToastProvider } from "./components/Toast";
@@ -26,6 +27,7 @@ import {
   AnalyticsPage,
   SettingsPage,
   NotificationsPage,
+  UsersRequestsPage,
 } from "./pages";
 
 type UserModalMode = "company" | "notary";
@@ -97,9 +99,23 @@ export default function App() {
 
   const [editingCompany, setEditingCompany] = useState<CompanyUser | null>(null);
   const [editingNotary, setEditingNotary] = useState<NotaryUser | null>(null);
+  const [prefillRequest, setPrefillRequest] = useState<any | null>(null);
   const [orders, setOrders] = useState<any[]>([...initialOrderRows]);
   const [documents, setDocuments] = useState<any[]>([...initialDocumentRows]);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
+  
+  const [registrationRequests, setRegistrationRequests] = useState<any[]>(() => {
+    const saved = localStorage.getItem("registration_requests");
+    try {
+      return saved ? JSON.parse(saved) : initialRegistrationRequests;
+    } catch {
+      return initialRegistrationRequests;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("registration_requests", JSON.stringify(registrationRequests));
+  }, [registrationRequests]);
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(() => {
     return localStorage.getItem("dashboard_selected_order_id");
@@ -173,6 +189,13 @@ export default function App() {
     setUserModalOpen(false);
     setEditingCompany(null);
     setEditingNotary(null);
+    setPrefillRequest(null);
+  };
+
+  const handleApproveRequest = (req: any) => {
+    setPrefillRequest(req);
+    setUserModalMode(req.role);
+    setUserModalOpen(true);
   };
 
   if (!isAuthenticated) {
@@ -199,6 +222,8 @@ export default function App() {
           setOrders,
           documents,
           setDocuments,
+          registrationRequests,
+          setRegistrationRequests,
           showConfirm,
         }}
       >
@@ -253,6 +278,7 @@ export default function App() {
                   <UsersCompaniesPage
                     onAddUser={() => openUserModal("company")}
                     onOpenNotaries={() => setPage("usersNotaries")}
+                    onOpenRequests={() => setPage("usersRequests")}
                     onViewCompany={(company) => {
                       setSelectedCompany(company);
                       setPage("companyDetails");
@@ -264,6 +290,7 @@ export default function App() {
                   <UsersNotariesPage
                     onAddUser={() => openUserModal("notary")}
                     onOpenCompanies={() => setPage("usersCompanies")}
+                    onOpenRequests={() => setPage("usersRequests")}
                     onViewNotary={(notary) => {
                       setSelectedNotary(notary);
                       setPage("notaryProfile");
@@ -271,6 +298,15 @@ export default function App() {
                     onEditNotary={openEditNotaryModal}
                   />
                 )}
+                {/* 
+                {page === "usersRequests" && (
+                  <UsersRequestsPage
+                    onOpenCompanies={() => setPage("usersCompanies")}
+                    onOpenNotaries={() => setPage("usersNotaries")}
+                    onApproveRequest={handleApproveRequest}
+                  />
+                )}
+                */}
                 {page === "companyDetails" && (
                   <CompanyDetailsPage
                     company={currentViewedCompany}
@@ -344,11 +380,39 @@ export default function App() {
                   onClose={handleCloseUserModal}
                   onSwitchType={() => setUserModalMode("notary")}
                   companyToEdit={editingCompany}
+                  prefillData={
+                    prefillRequest && prefillRequest.role === "company"
+                      ? {
+                          companyName: prefillRequest.companyName,
+                          businessEmail: prefillRequest.email,
+                          phone: prefillRequest.phone,
+                          contactPerson: prefillRequest.fullName,
+                          address: prefillRequest.coverageArea,
+                          contactEmail: prefillRequest.email,
+                          userName: prefillRequest.email.split("@")[0],
+                        }
+                      : null
+                  }
+                  requestId={prefillRequest ? prefillRequest.id : null}
                 />
               ) : (
                 <AddNotaryModal
                   onClose={handleCloseUserModal}
                   notaryToEdit={editingNotary}
+                  prefillData={
+                    prefillRequest && prefillRequest.role === "notary"
+                      ? {
+                          fullName: prefillRequest.fullName,
+                          email: prefillRequest.email,
+                          phone: prefillRequest.phone,
+                          license: prefillRequest.commissionNumber,
+                          expiry: prefillRequest.commissionExpiration,
+                          serviceArea: prefillRequest.coverageArea,
+                          userName: prefillRequest.email.split("@")[0],
+                        }
+                      : null
+                  }
+                  requestId={prefillRequest ? prefillRequest.id : null}
                 />
               )}
             </Modal>

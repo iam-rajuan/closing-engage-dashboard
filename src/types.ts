@@ -4,6 +4,7 @@ export type PageKey =
   | "dashboard"
   | "usersCompanies"
   | "usersNotaries"
+  | "usersRequests"
   | "companyDetails"
   | "notaryProfile"
   | "orders"
@@ -26,6 +27,7 @@ export type StatusKey =
   | "Inactive"
   | "Approved"
   | "Rejected"
+  | "Declined"
   | "Assigned"
   | "Received"
   | "Completed"
@@ -69,6 +71,25 @@ export interface NotaryUser {
   password?: string;
   sendInvite?: boolean;
   verify?: boolean;
+}
+
+export interface RegistrationRequest {
+  id: string; // e.g., "REQ-1"
+  role: "notary" | "company";
+  fullName: string;
+  email: string;
+  phone: string;
+  companyName?: string;
+  contactType?: string;
+  requestType?: string;
+  commissionNumber?: string;
+  commissionExpiration?: string;
+  eoInsurance?: string;
+  certifications?: string;
+  coverageArea: string;
+  message?: string;
+  status: "Pending" | "Approved" | "Declined";
+  createdDate: string;
 }
 
 

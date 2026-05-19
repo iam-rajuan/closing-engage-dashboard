@@ -14,7 +14,7 @@ import {
   UserCog,
   Users,
 } from "lucide-react";
-import type { NavItem, PageKey, CompanyUser, NotaryUser } from "./types";
+import type { NavItem, PageKey, CompanyUser, NotaryUser, RegistrationRequest } from "./types";
 
 export const navItems: NavItem[] = [
   { key: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -29,6 +29,7 @@ export const pageGroups: Record<PageKey, NavItem["key"]> = {
   dashboard: "dashboard",
   usersCompanies: "usersCompanies",
   usersNotaries: "usersCompanies",
+  usersRequests: "usersCompanies",
   companyDetails: "usersCompanies",
   notaryProfile: "usersCompanies",
   orders: "orders",
@@ -505,6 +506,7 @@ export const statusConfig = {
   Inactive: "bg-[#E9EEF6] text-[#6A7280]",
   Approved: "bg-[#E8F8EA] text-[#2C9A4D]",
   Rejected: "bg-[#FDE8E7] text-[#D25753]",
+  Declined: "bg-[#FDE8E7] text-[#D25753]",
   Assigned: "bg-[#DFEAFE] text-[#2E68CF]",
   Received: "bg-[#EDF1F6] text-[#7B8492]",
   Completed: "bg-[#DCF9E5] text-[#3DAE66]",
@@ -522,3 +524,50 @@ export const profileGradients = {
   mark:
     "bg-[radial-gradient(circle_at_48%_28%,#f0c4a5_0_9%,transparent_10%),radial-gradient(circle_at_47%_24%,#211a1a_0_17%,transparent_18%),radial-gradient(circle_at_50%_64%,#253858_0_20%,transparent_21%),linear-gradient(180deg,#131a28_0%,#40598d_100%)]",
 };
+
+export const initialRegistrationRequests: RegistrationRequest[] = [
+  {
+    id: "REQ-1",
+    role: "company",
+    fullName: "Eleanor Vance",
+    email: "e.vance@bluestonetitle.com",
+    phone: "(555) 789-0123",
+    companyName: "Bluestone Escrow & Title",
+    contactType: "Title Company",
+    requestType: "Access Request",
+    coverageArea: "Dallas Fort-Worth (DFW) Metroplex, Texas",
+    status: "Pending",
+    createdDate: "May 18, 2026",
+    message: "We are an independent escrow provider specializing in high-volume residential closings in North Texas. Requesting admin access to onboard our 15 escrow agents."
+  },
+  {
+    id: "REQ-2",
+    role: "notary",
+    fullName: "Marcus Thorne",
+    email: "m.thorne@txnotarypro.com",
+    phone: "(555) 345-6789",
+    commissionNumber: "TX-8877123",
+    commissionExpiration: "09/15/2029",
+    eoInsurance: "$100,000 Policy",
+    certifications: "NNA Certified, LSS Certified, RON Authorized",
+    coverageArea: "Austin, Round Rock, Cedar Park, TX",
+    status: "Pending",
+    createdDate: "May 19, 2026",
+    message: "Equipped with a dual-tray laser printer and high-speed mobile scanner for rapid drop-offs. Experienced with over 500 purchase, refinance, and HELOC closings."
+  },
+  {
+    id: "REQ-3",
+    role: "notary",
+    fullName: "Elena Rodriguez",
+    email: "elena.r@austinsignings.com",
+    phone: "(555) 234-5678",
+    commissionNumber: "TX-9900112",
+    commissionExpiration: "04/30/2028",
+    eoInsurance: "$100,000 Policy",
+    certifications: "NNA Certified, RON Authorized",
+    coverageArea: "Travis & Williamson Counties, TX",
+    status: "Pending",
+    createdDate: "May 19, 2026",
+    message: "Fluent in Spanish. Specializing in bilingual loan signings and estate planning trust packages."
+  }
+];

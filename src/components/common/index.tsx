@@ -361,14 +361,18 @@ export function UsersTabs({
   active,
   onCompanies,
   onNotaries,
+  onRequests,
   companyCount,
   notaryCount,
+  requestCount,
 }: {
-  active: "companies" | "notaries";
+  active: "companies" | "notaries" | "requests";
   onCompanies: () => void;
   onNotaries: () => void;
+  onRequests: () => void;
   companyCount: string;
   notaryCount: string;
+  requestCount: string;
 }) {
   return (
     <div className="border-b border-[#E7EAF1]">
@@ -393,6 +397,18 @@ export function UsersTabs({
           </span>
           {active === "notaries" ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-500" /> : null}
         </button>
+        {/* 
+        <button
+          onClick={onRequests}
+          className={`relative pb-4 text-[14px] font-semibold transition ${active === "requests" ? "text-brand-500" : "text-slate-500 hover:text-slate-700"}`}
+        >
+          Access Requests{" "}
+          <span className="ml-2 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-extrabold text-amber-600 border border-amber-200/50 animate-pulse">
+            {requestCount}
+          </span>
+          {active === "requests" ? <span className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-500" /> : null}
+        </button>
+        */}
       </div>
     </div>
   );

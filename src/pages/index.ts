@@ -11,3 +11,4 @@ export * from "./DocumentViewPage";
 export * from "./AnalyticsPage";
 export * from "./NotificationsPage";
 export * from "./SettingsPage";
+export * from "./UsersRequestsPage";

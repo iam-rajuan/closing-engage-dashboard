@@ -9,15 +9,17 @@ import { usersApi } from "../api/users";
 export function UsersCompaniesPage({
   onAddUser,
   onOpenNotaries,
+  onOpenRequests,
   onViewCompany,
   onEditCompany,
 }: {
   onAddUser: () => void;
   onOpenNotaries: () => void;
+  onOpenRequests: () => void;
   onViewCompany: (company: CompanyUser) => void;
   onEditCompany?: (company: CompanyUser) => void;
 }) {
-  const { companies, setCompanies } = useAppContext();
+  const { companies, setCompanies, notaries, registrationRequests } = useAppContext();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All Status");
   const [sortOrder, setSortOrder] = useState("Newest");
@@ -72,8 +74,10 @@ export function UsersCompaniesPage({
         active="companies"
         onCompanies={() => {}}
         onNotaries={onOpenNotaries}
+        onRequests={onOpenRequests}
         companyCount={companies.length.toString()}
-        notaryCount="152"
+        notaryCount={notaries.length.toString()}
+        requestCount={registrationRequests.filter(r => r.status === "Pending").length.toString()}
       />
       <FilterBar
         searchValue={search}
@@ -86,7 +90,7 @@ export function UsersCompaniesPage({
       />
       <div className="grid max-w-[760px] grid-cols-2 gap-3">
         <SimpleStatCard title="Total Companies" value={companies.length.toString()} note="+12% vs last mo" icon="building" />
-        <SimpleStatCard title="Active Notaries" value="152" note="Global coverage for Closing Engage" icon="shield" />
+        <SimpleStatCard title="Active Notaries" value={notaries.length.toString()} note="Global coverage for Closing Engage" icon="shield" />
       </div>
       {isLoading ? (
         <div className="flex h-48 w-full items-center justify-center rounded-xl bg-white border border-[#E2E8F0]">

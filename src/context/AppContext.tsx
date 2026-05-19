@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { CompanyUser, NotaryUser } from "../types";
+import type { CompanyUser, NotaryUser, RegistrationRequest } from "../types";
 
 export interface AppContextType {
   companies: CompanyUser[];
@@ -11,6 +11,8 @@ export interface AppContextType {
   setOrders: Dispatch<SetStateAction<any[]>>;
   documents: any[];
   setDocuments: Dispatch<SetStateAction<any[]>>;
+  registrationRequests: RegistrationRequest[];
+  setRegistrationRequests: Dispatch<SetStateAction<RegistrationRequest[]>>;
   showConfirm: (
     title: string,
     message: string,

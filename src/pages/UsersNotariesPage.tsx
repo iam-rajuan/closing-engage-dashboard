@@ -9,15 +9,17 @@ import { usersApi } from "../api/users";
 export function UsersNotariesPage({
   onAddUser,
   onOpenCompanies,
+  onOpenRequests,
   onViewNotary,
   onEditNotary,
 }: {
   onAddUser: () => void;
   onOpenCompanies: () => void;
+  onOpenRequests: () => void;
   onViewNotary: (notary: NotaryUser) => void;
   onEditNotary?: (notary: NotaryUser) => void;
 }) {
-  const { notaries, setNotaries } = useAppContext();
+  const { notaries, setNotaries, companies, registrationRequests } = useAppContext();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All Status");
   const [sortOrder, setSortOrder] = useState("Newest");
@@ -72,8 +74,10 @@ export function UsersNotariesPage({
         active="notaries"
         onCompanies={onOpenCompanies}
         onNotaries={() => {}}
-        companyCount="24"
+        onRequests={onOpenRequests}
+        companyCount={companies.length.toString()}
         notaryCount={notaries.length.toString()}
+        requestCount={registrationRequests.filter(r => r.status === "Pending").length.toString()}
       />
       <FilterBar
         searchValue={search}
@@ -85,7 +89,7 @@ export function UsersNotariesPage({
         onSortChange={setSortOrder}
       />
       <div className="grid max-w-[760px] grid-cols-2 gap-3">
-        <SimpleStatCard title="Total Companies" value="24" note="+12% vs last mo" icon="building" />
+        <SimpleStatCard title="Total Companies" value={companies.length.toString()} note="+12% vs last mo" icon="building" />
         <SimpleStatCard title="Active Notaries" value={notaries.length.toString()} note="Global coverage for Closing Engage" icon="shield" />
       </div>
       {isLoading ? (

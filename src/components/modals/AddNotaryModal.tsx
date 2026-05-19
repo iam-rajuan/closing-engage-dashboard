@@ -14,25 +14,29 @@ import {
 export function AddNotaryModal({
   onClose,
   notaryToEdit,
+  prefillData,
+  requestId,
 }: {
   onClose: () => void;
   notaryToEdit?: NotaryUser | null;
+  prefillData?: Partial<NotaryUser> | null;
+  requestId?: string | null;
 }) {
-  const { setNotaries } = useAppContext();
+  const { setNotaries, setRegistrationRequests } = useAppContext();
   const isEdit = !!notaryToEdit;
 
   const [form, setForm] = useState({
-    fullName: notaryToEdit?.fullName || "",
-    email: notaryToEdit?.email || "",
-    phone: notaryToEdit?.phone || "",
-    license: notaryToEdit?.license || "",
-    expiry: notaryToEdit?.expiry || "",
-    serviceArea: notaryToEdit?.serviceArea || "",
-    userName: notaryToEdit?.userName || "",
-    password: notaryToEdit?.password || "",
-    sendInvite: notaryToEdit?.sendInvite || false,
+    fullName: notaryToEdit?.fullName || prefillData?.fullName || "",
+    email: notaryToEdit?.email || prefillData?.email || "",
+    phone: notaryToEdit?.phone || prefillData?.phone || "",
+    license: notaryToEdit?.license || prefillData?.license || "",
+    expiry: notaryToEdit?.expiry || prefillData?.expiry || "",
+    serviceArea: notaryToEdit?.serviceArea || prefillData?.serviceArea || "",
+    userName: notaryToEdit?.userName || prefillData?.userName || "",
+    password: notaryToEdit?.password || prefillData?.password || "",
+    sendInvite: notaryToEdit?.sendInvite || prefillData?.sendInvite || false,
     active: notaryToEdit ? notaryToEdit.status !== "Inactive" : true,
-    verify: notaryToEdit ? !!notaryToEdit.verify : false,
+    verify: notaryToEdit ? !!notaryToEdit.verify : (prefillData ? true : false),
   });
   const [error, setError] = useState("");
 
@@ -82,7 +86,7 @@ export function AddNotaryModal({
         initials: form.fullName.substring(0, 2).toUpperCase(),
         color: "bg-[#FFE2D3] text-[#C66B33]",
         fullName: form.fullName,
-        specialty: "Notary Partner",
+        specialty: "Mobile Loan Signing Agent",
         email: form.email,
         phone: form.phone,
         license: form.license,
@@ -100,6 +104,13 @@ export function AddNotaryModal({
         sendInvite: form.sendInvite,
       };
       setNotaries((prev) => [newNotary, ...prev]);
+
+      // Promote pending request status to Approved
+      if (requestId) {
+        setRegistrationRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? { ...r, status: "Approved" } : r))
+        );
+      }
     }
 
     setError("");
@@ -177,13 +188,30 @@ export function AddNotaryModal({
               value={form.userName}
               onChange={(value) => updateField("userName", value)}
             />
-            <ModalInput
-              label="Confirm Password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={(value) => updateField("password", value)}
-              type="password"
-            />
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-slate-600">Password Setup</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const generated = Math.random().toString(36).substring(2, 10).toUpperCase() + Math.floor(100 + Math.random() * 900);
+                    updateField("password", generated);
+                  }}
+                  className="text-[11px] font-extrabold text-brand-500 hover:text-brand-600 uppercase tracking-wider cursor-pointer"
+                >
+                  Generate Password
+                </button>
+              </div>
+              <div className="flex h-11 items-center gap-3 rounded-lg border border-[#E1E7F0] bg-[#F5F8FC] px-4">
+                <input
+                  type="text"
+                  value={form.password}
+                  onChange={(event) => updateField("password", event.target.value)}
+                  placeholder="••••••••"
+                  className="w-full border-0 bg-transparent text-[14px] text-slate-700 outline-none placeholder:text-slate-400 font-medium"
+                />
+              </div>
+            </div>
           </div>
           <ModalCheckbox
             checked={form.sendInvite}
