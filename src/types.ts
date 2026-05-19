@@ -51,6 +51,7 @@ export interface CompanyUser {
   contactEmail?: string;
   userName?: string;
   password?: string;
+  adminVisiblePassword?: string;
   passwordChangedBy?: "admin" | "user";
   passwordChangedAt?: string;
   passwordStatus?: string;
@@ -74,6 +75,7 @@ export interface NotaryUser {
   serviceArea?: string;
   userName?: string;
   password?: string;
+  adminVisiblePassword?: string;
   passwordChangedBy?: "admin" | "user";
   passwordChangedAt?: string;
   passwordStatus?: string;

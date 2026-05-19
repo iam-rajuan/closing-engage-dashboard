@@ -29,7 +29,14 @@ export function NotaryProfilePage({
 }) {
   const { setNotaries, showConfirm, orders } = useAppContext();
   const { showToast } = useToast();
-  const firstPassword = notary ? firstPasswordVault.get(notary.id) : null;
+  const fallbackPassword = notary ? firstPasswordVault.get(notary.id) : null;
+  const visiblePassword = notary?.adminVisiblePassword
+    ? {
+        password: notary.adminVisiblePassword,
+        userName: notary.userName,
+        email: notary.email,
+      }
+    : fallbackPassword;
   const [passwordCopied, setPasswordCopied] = useState(false);
 
   if (!notary) {
@@ -418,16 +425,16 @@ export function NotaryProfilePage({
               }`}>
                 {notary.passwordStatus || "Password is not reset or changed by user"}
               </div>
-              {firstPassword ? (
+              {visiblePassword ? (
                 <>
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <span className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-mono text-[15px] font-bold tracking-wide text-slate-900">
-                      {firstPassword.password}
+                      {visiblePassword.password}
                     </span>
                     <button
                       type="button"
                       onClick={() => {
-                        void navigator.clipboard?.writeText(firstPassword.password);
+                        void navigator.clipboard?.writeText(visiblePassword.password);
                         setPasswordCopied(true);
                         window.setTimeout(() => setPasswordCopied(false), 1400);
                       }}
@@ -442,12 +449,12 @@ export function NotaryProfilePage({
                     </button>
                   </div>
                   <div className="mt-3 text-[12px] font-semibold text-slate-500">
-                    Username: {firstPassword.userName || notary.userName || "Not set"} · Email: {firstPassword.email}
+                    Username: {visiblePassword.userName || notary.userName || "Not set"} · Email: {visiblePassword.email}
                   </div>
                 </>
               ) : (
                 <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] font-medium text-slate-500">
-                  Latest generated password is not available in this browser session. Use Edit Notary to set a new temporary password if needed.
+                  No admin-set temporary password is available right now. Use Edit Notary to set a new temporary password if needed.
                 </div>
               )}
             </div>
@@ -455,8 +462,8 @@ export function NotaryProfilePage({
           <div className="border-t border-line bg-amber-50/70 px-6 py-5 text-[12px] leading-5 text-amber-900 lg:border-l lg:border-t-0">
             <div className="font-bold uppercase tracking-[0.14em] text-amber-700">Security Note</div>
             <p className="mt-2">
-              This visible password is kept only in the admin browser after account creation or admin reset.
-              MongoDB stores only the hashed password and password status metadata.
+              This temporary password is available only while the account is still using an admin-set password.
+              Once the user changes or resets it, the visible copy is removed.
             </p>
           </div>
         </div>
