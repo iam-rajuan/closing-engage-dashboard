@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search, X, ShieldCheck } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
+import { ordersApi } from "../../api/orders";
 import { assignableNotaries } from "../../data";
 import { StatusBadge } from "../common";
 import type { StatusKey } from "../../types";
@@ -21,18 +22,13 @@ export function AssignNotaryModal({ orderId, onClose }: { orderId: string | null
     `${name} ${meta}`.toLowerCase().includes(query.toLowerCase())
   );
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     if (!orderId) {
       onClose();
       return;
     }
-    setOrders((prev: any) =>
-      prev.map((o: any) =>
-        o[0] === orderId
-          ? [o[0], o[1], o[2], selectedNotary, o[4], o[5], "Assigned", selectedNotary.toLowerCase().includes("sarah") || selectedNotary.toLowerCase().includes("elena") ? "jane" : "mark"]
-          : o
-      )
-    );
+    const updatedOrder = await ordersApi.assignNotary(orderId, selectedNotary);
+    setOrders((prev: any) => prev.map((o: any) => (o[0] === orderId ? updatedOrder : o)));
     onClose();
   };
 

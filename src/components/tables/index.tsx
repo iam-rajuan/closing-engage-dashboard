@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Eye, Pencil, Trash2, MoreVertical, UserPlus, Download, FileText } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { usersApi } from "../../api/users";
+import { ordersApi } from "../../api/orders";
 import { StatusBadge, Pagination, Avatar, SectionCard } from "../common";
 import { profileGradients } from "../../data";
 import type { StatusKey, CompanyUser, NotaryUser } from "../../types";
@@ -238,7 +239,11 @@ export function OrderTable({
     showConfirm(
       "Delete Order?",
       `Are you sure you want to permanently delete order ${id}? This action cannot be undone.`,
-      () => setOrders((prev: any) => prev.filter((o: any) => o[0] !== id)),
+      () => {
+        void ordersApi.deleteOrder(id).then(() => {
+          setOrders((prev: any) => prev.filter((o: any) => o[0] !== id));
+        });
+      },
       "Delete",
       "danger"
     );

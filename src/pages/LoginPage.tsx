@@ -4,7 +4,7 @@ import { ShieldCheck, Mail, LockKeyhole, Eye, EyeOff } from "lucide-react";
 import closingEngageLogo from "../assets/closing-engage-logo.svg";
 
 export function LoginPage({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
-  const [email, setEmail] = useState("admin@closingengage.com");
+  const [email, setEmail] = useState("quantumerrors@gmail.com");
   const [password, setPassword] = useState("admin@123");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -61,7 +61,7 @@ export function LoginPage({ onLogin }: { onLogin: (email: string, password: stri
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   className="w-full border-0 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400"
-                  placeholder="name@closingengage.com"
+                  placeholder="quantumerrors@gmail.com"
                   type="email"
                   required
                 />

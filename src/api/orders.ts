@@ -1,0 +1,80 @@
+import { adminAuth } from "./auth";
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ||
+  "http://localhost:5000/api/v1";
+
+interface ApiEnvelope<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+export type OrderStatus = "Received" | "Assigned" | "Under Review" | "Approved" | "Completed" | "Rejected";
+export type OrderRow = [string, string, string, string, string, string, OrderStatus, "none" | "jane" | "mark"];
+
+export interface CreateOrderPayload {
+  titleCompany: string;
+  propertyAddress: string;
+  signerName?: string;
+  signerPhone?: string;
+  signingDate: string;
+  signingTime: string;
+  status: "Received" | "Assigned" | "Under Review";
+  priority: "Standard" | "Rush" | "High Touch";
+  notaryPreference: "First available" | "Verified only" | "Manual assignment";
+  instructions?: string;
+  documents?: Array<{ name: string; meta: string }>;
+}
+
+const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+  const token = adminAuth.getToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  const result = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
+
+  if (!response.ok || !result?.success) {
+    throw new Error(result?.message || "Request failed");
+  }
+
+  return result.data;
+};
+
+const orderPath = (id: string) => `/orders/${encodeURIComponent(id)}`;
+
+export const ordersApi = {
+  getOrders(): Promise<OrderRow[]> {
+    return request<OrderRow[]>("/orders");
+  },
+
+  createOrder(payload: CreateOrderPayload): Promise<OrderRow> {
+    return request<OrderRow>("/orders", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteOrder(id: string): Promise<boolean> {
+    return request<Record<string, never>>(orderPath(id), { method: "DELETE" }).then(() => true);
+  },
+
+  updateStatus(id: string, status: OrderStatus): Promise<OrderRow> {
+    return request<OrderRow>(`${orderPath(id)}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  assignNotary(id: string, notaryName: string): Promise<OrderRow> {
+    return request<OrderRow>(`${orderPath(id)}/assign-notary`, {
+      method: "PATCH",
+      body: JSON.stringify({ notaryName }),
+    });
+  },
+};

@@ -11,6 +11,7 @@ import {
 import type { PageKey, CompanyUser, NotaryUser } from "./types";
 import { adminAuth } from "./api/auth";
 import { usersApi } from "./api/users";
+import { ordersApi } from "./api/orders";
 import { ToastProvider } from "./components/Toast";
 import { AppContext, AdminProfile } from "./context/AppContext";
 import { Sidebar, TopNavbar } from "./components/layout";
@@ -37,10 +38,10 @@ type UserModalMode = "company" | "notary";
 export default function App() {
   const defaultAdminProfile: AdminProfile = {
     fullName: "Closing Engage Admin",
-    email: "admin@closingengage.com",
+    email: "quantumerrors@gmail.com",
     phone: "+1 (555) 010-1000",
     companyName: "Closing Engage",
-    companyEmail: "admin@closingengage.com",
+    companyEmail: "quantumerrors@gmail.com",
     contactNumber: "+1 (555) 010-1000",
     businessAddress: "Austin, Texas",
   };
@@ -76,6 +77,8 @@ export default function App() {
         setAdminProfile(session.admin.profile);
         const accessRequests = await usersApi.getAccessRequests();
         setRegistrationRequests(accessRequests);
+        const fetchedOrders = await ordersApi.getOrders();
+        setOrders(fetchedOrders);
         setIsAuthenticated(true);
       } catch {
         adminAuth.clearToken();
@@ -267,6 +270,8 @@ export default function App() {
         onLogin={async (email, password) => {
           const session = await adminAuth.login(email, password);
           setAdminProfile(session.admin.profile);
+          const fetchedOrders = await ordersApi.getOrders();
+          setOrders(fetchedOrders);
           setIsAuthenticated(true);
           setPage("dashboard");
         }}

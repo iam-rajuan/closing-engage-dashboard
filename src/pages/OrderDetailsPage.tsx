@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, Link2, Calendar, MapPin, FileText, User, X, Eye, Download } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
+import { ordersApi, type OrderStatus } from "../api/orders";
 import {
   StatusBadge,
   GhostButton,
@@ -83,14 +84,9 @@ export function OrderDetailsPage({
     return 0; // Received
   }, [status]);
 
-  const handleStatusChange = (newStatus: string) => {
-    setOrders((prev: any) =>
-      prev.map((o: any) =>
-        o[0] === id
-          ? [o[0], o[1], o[2], o[3], o[4], o[5], newStatus, o[7]]
-          : o
-      )
-    );
+  const handleStatusChange = async (newStatus: string) => {
+    const updatedOrder = await ordersApi.updateStatus(id, newStatus as OrderStatus);
+    setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
     setLocalLogs((prev) => [
       { title: `Order status changed to "${newStatus}"`, date: "Just now", tone: "blue" },
       ...prev,
@@ -118,13 +114,9 @@ export function OrderDetailsPage({
   };
 
   const handleReject = () => {
-    setOrders((prev: any) =>
-      prev.map((o: any) =>
-        o[0] === id
-          ? [o[0], o[1], o[2], o[3], o[4], o[5], "Rejected", o[7]]
-          : o
-      )
-    );
+    void ordersApi.updateStatus(id, "Rejected").then((updatedOrder) => {
+      setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
+    });
     setLocalLogs((prev) => [
       { title: "Scanback Rejected by Admin", date: "Just now", tone: "red" },
       ...prev,
@@ -134,13 +126,9 @@ export function OrderDetailsPage({
   };
 
   const handleApprove = () => {
-    setOrders((prev: any) =>
-      prev.map((o: any) =>
-        o[0] === id
-          ? [o[0], o[1], o[2], o[3], o[4], o[5], "Approved", o[7]]
-          : o
-      )
-    );
+    void ordersApi.updateStatus(id, "Approved").then((updatedOrder) => {
+      setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
+    });
     setLocalLogs((prev) => [
       { title: "Scanback Approved by Admin", date: "Just now", tone: "green" },
       ...prev,

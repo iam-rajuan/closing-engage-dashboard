@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MapPin, Calendar, UserPlus, ShieldCheck, FileText } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
+import { ordersApi } from "../../api/orders";
 import { ModalHeader, ModalInput, ModalActionFooter } from "./Modal";
 import { SectionCard } from "../common";
 
@@ -45,26 +46,26 @@ export function CreateOrderModal({
     ]);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.titleCompany || !form.propertyAddress || !form.signingDate || !form.signingTime) {
       setError("Complete the required order information before creating the order.");
       return;
     }
 
-    const newOrder = [
-      "#ORD-" + Math.floor(Math.random() * 100000),
-      form.titleCompany,
-      form.titleCompany.substring(0, 2).toUpperCase(),
-      "Unassigned",
-      form.propertyAddress,
-      form.signingDate,
-      form.status,
-      "none",
-    ];
-    setOrders((prev: any) => [newOrder, ...prev]);
-
-    setError("");
-    onCreate();
+    try {
+      const newOrder = await ordersApi.createOrder({
+        ...form,
+        status: form.status as "Received" | "Assigned" | "Under Review",
+        priority: form.priority as "Standard" | "Rush" | "High Touch",
+        notaryPreference: form.notaryPreference as "First available" | "Verified only" | "Manual assignment",
+        documents,
+      });
+      setOrders((prev: any) => [newOrder, ...prev]);
+      setError("");
+      onCreate();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to create order.");
+    }
   };
 
   const statusOptions = ["Received", "Assigned", "Under Review"];
