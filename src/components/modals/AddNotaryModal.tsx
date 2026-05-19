@@ -2,7 +2,34 @@ import { useState } from "react";
 import { Calendar, MapPin, Link2, ShieldCheck } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { usersApi } from "../../api/users";
+import { firstPasswordVault } from "../../utils/firstPasswordVault";
 import type { NotaryUser } from "../../types";
+
+// Helper functions to convert date formats between MM/DD/YYYY and YYYY-MM-DD
+const convertToInputDate = (dateStr?: string): string => {
+  if (!dateStr) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  const parts = dateStr.split("/");
+  if (parts.length === 3) {
+    let [month, day, year] = parts;
+    if (month.length === 1) month = "0" + month;
+    if (day.length === 1) day = "0" + day;
+    if (year.length === 2) year = "20" + year;
+    return `${year}-${month}-${day}`;
+  }
+  return "";
+};
+
+const convertToDisplayDate = (dateStr?: string): string => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${month}/${day}/${year}`;
+  }
+  return dateStr;
+};
 import {
   ModalHeader,
   ModalInput,
@@ -14,11 +41,13 @@ import {
 
 export function AddNotaryModal({
   onClose,
+  onSwitchType,
   notaryToEdit,
   prefillData,
   requestId,
 }: {
   onClose: () => void;
+  onSwitchType?: () => void;
   notaryToEdit?: NotaryUser | null;
   prefillData?: Partial<NotaryUser> | null;
   requestId?: string | null;
@@ -31,7 +60,7 @@ export function AddNotaryModal({
     email: notaryToEdit?.email || prefillData?.email || "",
     phone: notaryToEdit?.phone || prefillData?.phone || "",
     license: notaryToEdit?.license || prefillData?.license || "",
-    expiry: notaryToEdit?.expiry || prefillData?.expiry || "",
+    expiry: convertToInputDate(notaryToEdit?.expiry || prefillData?.expiry || ""),
     serviceArea: notaryToEdit?.serviceArea || prefillData?.serviceArea || "",
     userName: notaryToEdit?.userName || prefillData?.userName || "",
     password: notaryToEdit?.password || prefillData?.password || "",
@@ -50,9 +79,6 @@ export function AddNotaryModal({
     if (
       !form.fullName ||
       !form.email ||
-      !form.license ||
-      !form.expiry ||
-      !form.serviceArea ||
       !form.userName ||
       (!isEdit && !form.password)
     ) {
@@ -65,7 +91,7 @@ export function AddNotaryModal({
       email: form.email,
       phone: form.phone,
       license: form.license,
-      expiry: form.expiry,
+      expiry: convertToDisplayDate(form.expiry),
       serviceArea: form.serviceArea,
       userName: form.userName,
       password: form.password,
@@ -78,9 +104,23 @@ export function AddNotaryModal({
     try {
       if (isEdit && notaryToEdit) {
         const updatedNotary = await usersApi.updateNotary(notaryToEdit.id, payload);
+        if (form.password) {
+          firstPasswordVault.save(updatedNotary.id, {
+            role: "notary",
+            password: form.password,
+            userName: form.userName,
+            email: form.email,
+          });
+        }
         setNotaries((prev) => prev.map((n) => (n.id === notaryToEdit.id ? updatedNotary : n)));
       } else {
         const newNotary = await usersApi.createNotary(payload);
+        firstPasswordVault.save(newNotary.id, {
+          role: "notary",
+          password: form.password,
+          userName: form.userName,
+          email: form.email,
+        });
         setNotaries((prev) => [newNotary, ...prev]);
 
         if (requestId) {
@@ -105,17 +145,36 @@ export function AddNotaryModal({
         onClose={onClose}
       />
       <div className="flex-1 overflow-y-auto space-y-7 px-5 py-5">
+        {!isEdit && (
+          <div>
+            <div className="mb-3 text-[14px] font-semibold text-slate-600">User Type Selection</div>
+            <div className="inline-flex rounded-xl bg-[#EDF1F7] p-1">
+              <button
+                onClick={onSwitchType}
+                className="px-5 py-2 text-[14px] font-medium text-slate-500 hover:text-slate-700 transition"
+              >
+                Title Company
+              </button>
+              <button className="rounded-lg bg-white px-5 py-2 text-[14px] font-semibold text-brand-500 shadow-sm">
+                Notary
+              </button>
+            </div>
+          </div>
+        )}
+
         <div>
           <ModalSectionTitle title="Personal Information" />
           <div className="mt-5 grid grid-cols-2 gap-5">
             <ModalInput
               label="Full Name"
+              required
               placeholder="e.g. Jane Doe"
               value={form.fullName}
               onChange={(value) => updateField("fullName", value)}
             />
             <ModalInput
               label="Email Address"
+              required
               placeholder="jane.doe@example.com"
               value={form.email}
               onChange={(value) => updateField("email", value)}
@@ -142,7 +201,8 @@ export function AddNotaryModal({
             />
             <ModalInput
               label="Commission Expiry Date"
-              placeholder="mm/dd/yyyy"
+              placeholder="Select Date"
+              type="date"
               value={form.expiry}
               onChange={(value) => updateField("expiry", value)}
               icon={<Calendar size={16} className="text-slate-500" />}
@@ -164,13 +224,16 @@ export function AddNotaryModal({
           <div className="mt-5 grid grid-cols-2 gap-5">
             <ModalInput
               label="User Name"
+              required
               placeholder="Create username"
               value={form.userName}
               onChange={(value) => updateField("userName", value)}
             />
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[13px] font-semibold text-slate-600">Password Setup</span>
+                <span className="text-[13px] font-semibold text-slate-600">
+                  Password Setup{!isEdit ? <span className="ml-1 text-rose-500">*</span> : null}
+                </span>
                 <button
                   type="button"
                   onClick={() => {

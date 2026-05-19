@@ -9,9 +9,10 @@ import {
   SmallMetricCard,
   TableHeader,
 } from "../components/common";
-import { FileText, Mail, Link2, MapPin, ArrowLeft, ShieldCheck } from "lucide-react";
-import { useMemo } from "react";
+import { FileText, Mail, Link2, MapPin, ArrowLeft, ShieldCheck, KeyRound, Copy } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { StatusKey, CompanyUser } from "../types";
+import { firstPasswordVault } from "../utils/firstPasswordVault";
 
 export function CompanyDetailsPage({
   company,
@@ -23,6 +24,8 @@ export function CompanyDetailsPage({
   onEdit: (company: CompanyUser) => void;
 }) {
   const { setCompanies, showConfirm } = useAppContext();
+  const firstPassword = company ? firstPasswordVault.get(company.id) : null;
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
   const handleDeactivate = () => {
     if (!company) return;
@@ -203,32 +206,106 @@ export function CompanyDetailsPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-[2fr_0.95fr] gap-5">
-        <SectionCard className="p-6">
-          <div className="flex gap-4">
-            <div className="flex h-[52px] w-[52px] items-center justify-center rounded-2xl bg-[#DCE7FF] text-brand-500">
-              <FileText size={24} />
-            </div>
-            <div className="flex-1">
-              <div className="mb-1 flex items-center gap-3">
-                <h3 className="text-[18px] font-semibold text-slate-800">{company.companyName}</h3>
-                <StatusBadge status={company.status as StatusKey} />
-              </div>
-              <p className="text-[15px] text-slate-500">Full-service Title &amp; Escrow Partner</p>
-              <div className="mt-8 grid grid-cols-2 gap-x-10 gap-y-7">
-                <InfoBlock label="Primary Contact" lines={[company.contactPerson, "Senior Escrow Officer"]} strongFirst />
-                <InfoBlock label="Contact Information" lines={[company.contactEmail || company.businessEmail, company.phone]} icons={[Mail, Link2]} />
-                <InfoBlock label="Office Address" lines={company.address ? company.address.split(",") : ["Address Not Provided"]} icons={[MapPin]} />
+      <div className="grid grid-cols-[minmax(0,1.9fr)_minmax(320px,0.8fr)] gap-5">
+        <SectionCard className="overflow-hidden p-0">
+          <div className="border-b border-line bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-6 py-5">
+            <div className="flex items-start justify-between gap-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-[54px] w-[54px] items-center justify-center rounded-[16px] bg-[#EAF2FF] text-brand-600 ring-1 ring-brand-100">
+                  <FileText size={23} />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="text-[18px] font-bold tracking-tight text-slate-900">{company.companyName}</h3>
+                    <StatusBadge status={company.status as StatusKey} />
+                  </div>
+                  <p className="mt-1 text-[14px] font-medium text-slate-500">Title company workspace and account access profile</p>
+                  {company.publicId && (
+                    <div className="mt-3 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-mono text-[12px] font-bold text-slate-600">
+                      {company.publicId}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
+          <div className="grid gap-5 px-6 py-6 md:grid-cols-3">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              <InfoBlock label="Primary Contact" lines={[company.contactPerson, "Senior Escrow Officer"]} strongFirst />
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              <InfoBlock label="Contact Information" lines={[company.contactEmail || company.businessEmail, company.phone]} icons={[Mail, Link2]} />
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              <InfoBlock label="Office Address" lines={company.address ? company.address.split(",") : ["Address Not Provided"]} icons={[MapPin]} />
+            </div>
+          </div>
         </SectionCard>
-        <div className="space-y-4">
+        <div className="grid gap-4">
           <SmallMetricCard title="Total Orders" value={stats.total} tone="blue" />
           <SmallMetricCard title="Active Orders" value={stats.active} tone="blue2" />
           <SmallMetricCard title="Completed Orders" value={stats.completed} tone="green" />
         </div>
       </div>
+
+      <SectionCard className="overflow-hidden p-0">
+        <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
+          <div className="flex gap-4 px-6 py-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-[#EEF5FF] text-brand-600 ring-1 ring-brand-100">
+              <KeyRound size={20} />
+            </div>
+            <div>
+              <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-slate-400">Account Password</div>
+              <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                company.passwordChangedBy === "user"
+                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              }`}>
+                {company.passwordStatus || "Password is not reset or changed by user"}
+              </div>
+              {firstPassword ? (
+                <>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <span className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-mono text-[15px] font-bold tracking-wide text-slate-900">
+                      {firstPassword.password}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(firstPassword.password);
+                        setPasswordCopied(true);
+                        window.setTimeout(() => setPasswordCopied(false), 1400);
+                      }}
+                      className={`inline-flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[12px] font-bold transition focus:outline-none ${
+                        passwordCopied
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-brand-200 bg-brand-50 text-brand-600 hover:bg-brand-100"
+                      }`}
+                    >
+                      <Copy size={14} />
+                      {passwordCopied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <div className="mt-3 text-[12px] font-semibold text-slate-500">
+                    Username: {firstPassword.userName || company.userName || "Not set"} · Email: {firstPassword.email}
+                  </div>
+                </>
+              ) : (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] font-medium text-slate-500">
+                  Latest generated password is not available in this browser session. Use Edit Company to set a new temporary password if needed.
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="border-t border-line bg-amber-50/70 px-6 py-5 text-[12px] leading-5 text-amber-900 lg:border-l lg:border-t-0">
+            <div className="font-bold uppercase tracking-[0.14em] text-amber-700">Security Note</div>
+            <p className="mt-2">
+              This visible password is kept only in the admin browser after account creation or admin reset.
+              MongoDB stores only the hashed password and password status metadata.
+            </p>
+          </div>
+        </div>
+      </SectionCard>
 
       <div className="grid grid-cols-2 gap-5">
         <SectionCard className="overflow-hidden">

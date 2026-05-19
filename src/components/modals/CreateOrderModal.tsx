@@ -2,6 +2,32 @@ import { useState } from "react";
 import { MapPin, Calendar, UserPlus, ShieldCheck, FileText } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { ordersApi } from "../../api/orders";
+
+// Helper functions to convert date formats between MM/DD/YYYY and YYYY-MM-DD
+const convertToInputDate = (dateStr?: string): string => {
+  if (!dateStr) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  const parts = dateStr.split("/");
+  if (parts.length === 3) {
+    let [month, day, year] = parts;
+    if (month.length === 1) month = "0" + month;
+    if (day.length === 1) day = "0" + day;
+    if (year.length === 2) year = "20" + year;
+    return `${year}-${month}-${day}`;
+  }
+  return "";
+};
+
+const convertToDisplayDate = (dateStr?: string): string => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${month}/${day}/${year}`;
+  }
+  return dateStr;
+};
 import { ModalHeader, ModalInput, ModalActionFooter } from "./Modal";
 import { SectionCard } from "../common";
 
@@ -18,7 +44,7 @@ export function CreateOrderModal({
     propertyAddress: "452 Pine St, San Francisco, CA 94104",
     signerName: "Daniel Brooks",
     signerPhone: "(555) 401-8291",
-    signingDate: "10/24/2024",
+    signingDate: convertToInputDate("10/24/2024"),
     signingTime: "2:00 PM",
     status: "Received",
     priority: "Standard",
@@ -55,6 +81,7 @@ export function CreateOrderModal({
     try {
       const newOrder = await ordersApi.createOrder({
         ...form,
+        signingDate: convertToDisplayDate(form.signingDate),
         status: form.status as "Received" | "Assigned" | "Under Review",
         priority: form.priority as "Standard" | "Rush" | "High Touch",
         notaryPreference: form.notaryPreference as "First available" | "Verified only" | "Manual assignment",
@@ -150,7 +177,8 @@ export function CreateOrderModal({
                   </div>
                   <ModalInput
                     label="Signing Date"
-                    placeholder="mm/dd/yyyy"
+                    placeholder="Select Date"
+                    type="date"
                     value={form.signingDate}
                     onChange={(value) => updateField("signingDate", value)}
                     icon={<Calendar size={16} className="text-slate-500" />}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link2, ShieldCheck } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { usersApi } from "../../api/users";
+import { firstPasswordVault } from "../../utils/firstPasswordVault";
 import type { CompanyUser } from "../../types";
 import {
   ModalHeader,
@@ -53,7 +54,6 @@ export function AddCompanyUserModal({
       !form.companyName ||
       !form.businessEmail ||
       !form.contactPerson ||
-      !form.contactEmail ||
       !form.userName ||
       (!isEdit && !form.password)
     ) {
@@ -78,9 +78,23 @@ export function AddCompanyUserModal({
     try {
       if (isEdit && companyToEdit) {
         const updatedCompany = await usersApi.updateCompany(companyToEdit.id, payload);
+        if (form.password) {
+          firstPasswordVault.save(updatedCompany.id, {
+            role: "company",
+            password: form.password,
+            userName: form.userName,
+            email: form.contactEmail || form.businessEmail,
+          });
+        }
         setCompanies((prev) => prev.map((c) => (c.id === companyToEdit.id ? updatedCompany : c)));
       } else {
         const newCompany = await usersApi.createCompany(payload);
+        firstPasswordVault.save(newCompany.id, {
+          role: "company",
+          password: form.password,
+          userName: form.userName,
+          email: form.contactEmail || form.businessEmail,
+        });
         setCompanies((prev) => [newCompany, ...prev]);
 
         if (requestId) {
@@ -100,7 +114,7 @@ export function AddCompanyUserModal({
   return (
     <div className="flex flex-col max-h-[88vh]">
       <ModalHeader
-        title={isEdit ? "Edit Company User" : "Add New User"}
+        title={isEdit ? "Edit Company User" : "Add Title Company"}
         subtitle={isEdit ? "Update this title company user account details" : "Create a new user account"}
         onClose={onClose}
       />
@@ -122,12 +136,14 @@ export function AddCompanyUserModal({
         <div className="grid grid-cols-2 gap-5">
           <ModalInput
             label="Company Name"
+            required
             placeholder="e.g. Acme Title Co."
             value={form.companyName}
             onChange={(value) => updateField("companyName", value)}
           />
           <ModalInput
             label="Business Email"
+            required
             placeholder="contact@company.com"
             value={form.businessEmail}
             onChange={(value) => updateField("businessEmail", value)}
@@ -140,6 +156,7 @@ export function AddCompanyUserModal({
           />
           <ModalInput
             label="Contact Person Name"
+            required
             placeholder="Full name"
             value={form.contactPerson}
             onChange={(value) => updateField("contactPerson", value)}
@@ -167,13 +184,16 @@ export function AddCompanyUserModal({
           <div className="mt-5 grid grid-cols-2 gap-5">
             <ModalInput
               label="User Name"
+              required
               placeholder="Create username"
               value={form.userName}
               onChange={(value) => updateField("userName", value)}
             />
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[13px] font-semibold text-slate-600">Password Setup</span>
+                <span className="text-[13px] font-semibold text-slate-600">
+                  Password Setup{!isEdit ? <span className="ml-1 text-rose-500">*</span> : null}
+                </span>
                 <button
                   type="button"
                   onClick={() => {

@@ -4,16 +4,15 @@ import { usersApi } from "../api/users";
 import { useToast } from "../components/Toast";
 import {
   GhostButton,
-  PrimaryButton,
   SectionCard,
   Avatar,
-  InfoBlock,
   TableHeader,
   StatusBadge,
 } from "../components/common";
-import { Eye, FileText, Download, ArrowLeft, Plus, Trash2, X, ShieldCheck } from "lucide-react";
+import { Eye, FileText, Download, ArrowLeft, Plus, Trash2, X, ShieldCheck, KeyRound, Copy } from "lucide-react";
 import { profileGradients, uploadActivity } from "../data";
 import type { StatusKey, NotaryUser } from "../types";
+import { firstPasswordVault } from "../utils/firstPasswordVault";
 
 export function NotaryProfilePage({
   notary,
@@ -30,6 +29,8 @@ export function NotaryProfilePage({
 }) {
   const { setNotaries, showConfirm, orders } = useAppContext();
   const { showToast } = useToast();
+  const firstPassword = notary ? firstPasswordVault.get(notary.id) : null;
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
   if (!notary) {
     return (
@@ -288,7 +289,7 @@ export function NotaryProfilePage({
                 <button
                   onClick={handleVerify}
                   disabled={isVerifying}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 hover:bg-brand-100 px-2.5 py-0.5 text-[12px] font-semibold text-brand-700 border border-brand-200 hover:border-brand-300 transition focus:outline-none"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 hover:bg-brand-100 px-2.5 py-0.5 text-[12px] font-semibold text-brand-700 border border-brand-200 hover:border-brand-300 transition focus:outline-none disabled:opacity-60"
                 >
                   {isVerifying ? (
                     <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-700 border-t-transparent shrink-0" />
@@ -301,7 +302,7 @@ export function NotaryProfilePage({
                 </button>
               )}
             </div>
-            <p className="mt-1 text-[14px] text-slate-500 font-medium">Created on {notary.createdDate}</p>
+            <div className="mt-1 text-[14px] text-slate-500 font-medium">Created on {notary.createdDate}</div>
           </div>
         </div>
 
@@ -309,14 +310,14 @@ export function NotaryProfilePage({
           <GhostButton
             onClick={() => onEdit(notary)}
             disabled={isDeleting || isVerifying}
-            className="w-[140px] h-[46px] justify-center border-brand-300 text-brand-600 bg-brand-50/50 hover:bg-brand-50 px-0 rounded-lg text-sm font-semibold"
+            className="w-[140px] h-[46px] justify-center border-brand-300 text-brand-600 bg-brand-50/50 hover:bg-brand-50 px-0"
           >
             Edit Notary
           </GhostButton>
           <GhostButton
             onClick={handleToggleStatus}
             disabled={isVerifying || isDeleting}
-            className={`w-[140px] h-[46px] justify-center px-0 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
+            className={`w-[140px] h-[46px] justify-center transition px-0 ${
               notary.status === "Active"
                 ? "border-amber-200 text-amber-600 bg-amber-50/30 hover:bg-amber-50"
                 : "border-emerald-200 text-emerald-600 bg-emerald-50/30 hover:bg-emerald-50"
@@ -330,47 +331,136 @@ export function NotaryProfilePage({
               "Activate"
             )}
           </GhostButton>
-          <PrimaryButton
+          <button
             onClick={handleDelete}
             disabled={isDeleting || isVerifying}
-            className="w-[140px] h-[46px] justify-center bg-rose-500 hover:bg-rose-600 text-white shadow-[0_8px_18px_rgba(244,63,94,0.2)] px-0 rounded-lg text-sm font-semibold flex items-center gap-2"
+            className="inline-flex items-center justify-center rounded-lg bg-rose-500 w-[140px] h-[46px] text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(244,63,94,0.2)] hover:bg-rose-600 transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isDeleting ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
             ) : (
-              "Delete Notary"
+              "Delete"
             )}
-          </PrimaryButton>
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-[2fr_0.95fr] gap-5">
-        <SectionCard className="p-7">
-          <div className="flex items-start gap-6">
-            <div className="relative overflow-hidden rounded-[22px] border border-[#D4E3FB] bg-[#E7F0FF] p-2">
-              <Avatar className="h-[98px] w-[98px] rounded-[18px]" gradient={getGradient()} />
-              <div className="absolute bottom-2 right-2 rounded-full bg-[#EEF5FF] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-500 shadow-sm">
+      <div className="grid grid-cols-[minmax(0,2.1fr)_minmax(320px,1fr)] gap-7">
+        <SectionCard className="min-h-[244px] overflow-hidden rounded-[8px] border-0 bg-white p-0 shadow-sm">
+          <div className="flex h-full gap-7 px-7 py-7">
+            <div className="relative h-[132px] w-[132px] shrink-0 overflow-visible rounded-[18px] bg-[#e8f0ff] p-1.5 ring-1 ring-[#d8e5fb]">
+              <Avatar className="h-full w-full rounded-[14px]" gradient={getGradient()} />
+              <div className="absolute -bottom-2 left-[68px] rounded-[10px] border border-brand-100 bg-[#EEF5FF] px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-brand-700 shadow-sm">
                 {notary.status}
               </div>
             </div>
-            <div className="grid flex-1 grid-cols-2 gap-x-12 gap-y-6">
-              <InfoBlock label="Email Address" lines={[notary.email]} strongFirst />
-              <InfoBlock label="Phone Number" lines={[notary.phone]} strongFirst />
-              <InfoBlock label="Notary License" lines={[notary.license]} strongFirst />
-              <InfoBlock label="Location Base" lines={[notary.serviceArea || "Not specified"]} strongFirst />
+            <div className="grid flex-1 gap-x-12 gap-y-7 pt-3 md:grid-cols-2">
+              <div>
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Email Address</div>
+                <div className="mt-2 text-[16px] font-semibold text-slate-950">{notary.email}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Phone Number</div>
+                <div className="mt-2 text-[16px] font-semibold text-slate-950">{notary.phone || "Phone Not Provided"}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Notary License</div>
+                <div className="mt-2 text-[16px] font-semibold text-slate-950">{notary.license || "License Not Provided"}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Location Base</div>
+                <div className="mt-2 text-[16px] font-semibold text-slate-950">{notary.serviceArea || "Location Not Provided"}</div>
+              </div>
+              {notary.publicId ? (
+                <div className="md:col-span-2">
+                  <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Notary ID</div>
+                  <div className="mt-2 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-[12px] font-bold text-slate-600">
+                    {notary.publicId}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </SectionCard>
-        <div className="rounded-2xl bg-[#2866D1] p-8 text-white shadow-[0_12px_30px_rgba(40,102,209,0.22)]">
-          <h3 className="text-[18px] font-bold tracking-tight">Professional Credentials</h3>
-          <div className="mt-7 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">Commission Expiry</div>
-          <div className="mt-2 text-[20px] font-semibold">{notary.expiry || "12/31/2026"}</div>
-          <div className="mt-8 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">Service Area</div>
-          <div className="mt-2 max-w-[220px] text-[16px] leading-7 text-white/85">
-            {notary.serviceArea || "Greater Metropolitan Area Base"}
+        <div className="min-h-[244px] rounded-[8px] bg-[#2866D1] p-8 text-white shadow-[0_14px_32px_rgba(40,102,209,0.2)]">
+          <h3 className="text-[20px] font-bold tracking-tight">Professional Credentials</h3>
+          <div className="mt-7 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/60">Commission Expiry</div>
+          <div className="mt-2 text-[22px] font-semibold">{notary.expiry || "Not Provided"}</div>
+          <div className="mt-8 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/60">Service Area</div>
+          <div className="mt-2 max-w-[290px] text-[17px] font-medium leading-7 text-white/85">
+            {notary.serviceArea || "Service Area Not Provided"}
+          </div>
+          <div className="mt-7 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-white/10 px-3 py-2">
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Verification</div>
+              <div className="mt-1 text-[14px] font-bold">{notary.verify ? "Verified" : "Pending"}</div>
+            </div>
+            <div className="rounded-xl bg-white/10 px-3 py-2">
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Specialty</div>
+              <div className="mt-1 truncate text-[14px] font-bold">{notary.specialty || "Mobile Signing"}</div>
+            </div>
           </div>
         </div>
       </div>
+
+      <SectionCard className="overflow-hidden p-0">
+        <div className="grid gap-0 lg:grid-cols-[1fr_360px]">
+          <div className="flex gap-4 px-6 py-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-[#EEF5FF] text-brand-600 ring-1 ring-brand-100">
+              <KeyRound size={20} />
+            </div>
+            <div>
+              <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-slate-400">Account Password</div>
+              <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                notary.passwordChangedBy === "user"
+                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              }`}>
+                {notary.passwordStatus || "Password is not reset or changed by user"}
+              </div>
+              {firstPassword ? (
+                <>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <span className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-mono text-[15px] font-bold tracking-wide text-slate-900">
+                      {firstPassword.password}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(firstPassword.password);
+                        setPasswordCopied(true);
+                        window.setTimeout(() => setPasswordCopied(false), 1400);
+                      }}
+                      className={`inline-flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-[12px] font-bold transition focus:outline-none ${
+                        passwordCopied
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-brand-200 bg-brand-50 text-brand-600 hover:bg-brand-100"
+                      }`}
+                    >
+                      <Copy size={14} />
+                      {passwordCopied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <div className="mt-3 text-[12px] font-semibold text-slate-500">
+                    Username: {firstPassword.userName || notary.userName || "Not set"} · Email: {firstPassword.email}
+                  </div>
+                </>
+              ) : (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] font-medium text-slate-500">
+                  Latest generated password is not available in this browser session. Use Edit Notary to set a new temporary password if needed.
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="border-t border-line bg-amber-50/70 px-6 py-5 text-[12px] leading-5 text-amber-900 lg:border-l lg:border-t-0">
+            <div className="font-bold uppercase tracking-[0.14em] text-amber-700">Security Note</div>
+            <p className="mt-2">
+              This visible password is kept only in the admin browser after account creation or admin reset.
+              MongoDB stores only the hashed password and password status metadata.
+            </p>
+          </div>
+        </div>
+      </SectionCard>
 
       <div className="grid grid-cols-[1.65fr_1fr] gap-5">
         <SectionCard className="overflow-hidden">

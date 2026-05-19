@@ -38,6 +38,7 @@ export type StatusKey =
 
 export interface CompanyUser {
   id: string; // e.g., "COMP-1"
+  publicId?: string; // e.g., "CE-COMP-2026-A1B2C3"
   initials: string;
   color: string;
   companyName: string;
@@ -50,12 +51,16 @@ export interface CompanyUser {
   contactEmail?: string;
   userName?: string;
   password?: string;
+  passwordChangedBy?: "admin" | "user";
+  passwordChangedAt?: string;
+  passwordStatus?: string;
   sendInvite?: boolean;
   verify?: boolean;
 }
 
 export interface NotaryUser {
   id: string; // e.g., "NOT-1"
+  publicId?: string; // e.g., "CE-NOT-2026-A1B2C3"
   initials: string;
   color: string;
   fullName: string;
@@ -69,6 +74,9 @@ export interface NotaryUser {
   serviceArea?: string;
   userName?: string;
   password?: string;
+  passwordChangedBy?: "admin" | "user";
+  passwordChangedAt?: string;
+  passwordStatus?: string;
   sendInvite?: boolean;
   verify?: boolean;
 }
@@ -91,5 +99,3 @@ export interface RegistrationRequest {
   status: "Pending" | "Approved" | "Declined";
   createdDate: string;
 }
-
-

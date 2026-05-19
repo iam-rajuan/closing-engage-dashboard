@@ -63,7 +63,12 @@ export function CompanyTable({
                   <div className={`flex h-8 w-8 items-center justify-center rounded-lg text-[12px] font-bold ${company.color}`}>
                     {company.initials}
                   </div>
-                  <div className="max-w-[130px] text-[14px] font-semibold leading-5 text-slate-800">{company.companyName}</div>
+                  <div>
+                    <div className="max-w-[130px] text-[14px] font-semibold leading-5 text-slate-800">{company.companyName}</div>
+                    {company.publicId && (
+                      <div className="mt-1 font-mono text-[11px] font-semibold text-slate-400">{company.publicId}</div>
+                    )}
+                  </div>
                 </div>
               </td>
               <td className="px-3 py-6 text-slate-700">{company.contactPerson}</td>
@@ -164,6 +169,9 @@ export function NotaryTable({
                   <div>
                     <div className="font-semibold text-slate-800">{notary.fullName}</div>
                     <div className="text-[12px] text-slate-500">{notary.specialty}</div>
+                    {notary.publicId && (
+                      <div className="mt-1 font-mono text-[11px] font-semibold text-slate-400">{notary.publicId}</div>
+                    )}
                   </div>
                 </div>
               </td>

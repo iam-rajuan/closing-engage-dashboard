@@ -1,9 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import {
-  companyRows as initialCompanyRows,
   documentRows as initialDocumentRows,
-  notaryRows as initialNotaryRows,
   orderRows as initialOrderRows,
   pageGroups,
   initialRegistrationRequests,
@@ -76,11 +74,17 @@ export default function App() {
       try {
         const session = await adminAuth.fetchMe();
         setAdminProfile(session.admin.profile);
-        const accessRequests = await usersApi.getAccessRequests();
+        const [accessRequests, fetchedCompanies, fetchedNotaries, fetchedOrders, fetchedDocuments] = await Promise.all([
+          usersApi.getAccessRequests(),
+          usersApi.getCompanies(),
+          usersApi.getNotaries(),
+          ordersApi.getOrders(),
+          documentsApi.getDocuments(),
+        ]);
         setRegistrationRequests(accessRequests);
-        const fetchedOrders = await ordersApi.getOrders();
+        setCompanies(fetchedCompanies);
+        setNotaries(fetchedNotaries);
         setOrders(fetchedOrders);
-        const fetchedDocuments = await documentsApi.getDocuments();
         setDocuments(fetchedDocuments);
         setIsAuthenticated(true);
       } catch {
@@ -96,8 +100,8 @@ export default function App() {
 
   const activeNav = useMemo(() => pageGroups[page], [page]);
 
-  const [companies, setCompanies] = useState<CompanyUser[]>([...initialCompanyRows]);
-  const [notaries, setNotaries] = useState<NotaryUser[]>([...initialNotaryRows]);
+  const [companies, setCompanies] = useState<CompanyUser[]>([]);
+  const [notaries, setNotaries] = useState<NotaryUser[]>([]);
 
   const [adminProfile, setAdminProfile] = useState<AdminProfile>(() => {
     const saved = localStorage.getItem("dashboard_admin_profile");
@@ -273,9 +277,15 @@ export default function App() {
         onLogin={async (email, password) => {
           const session = await adminAuth.login(email, password);
           setAdminProfile(session.admin.profile);
-          const fetchedOrders = await ordersApi.getOrders();
+          const [fetchedCompanies, fetchedNotaries, fetchedOrders, fetchedDocuments] = await Promise.all([
+            usersApi.getCompanies(),
+            usersApi.getNotaries(),
+            ordersApi.getOrders(),
+            documentsApi.getDocuments(),
+          ]);
+          setCompanies(fetchedCompanies);
+          setNotaries(fetchedNotaries);
           setOrders(fetchedOrders);
-          const fetchedDocuments = await documentsApi.getDocuments();
           setDocuments(fetchedDocuments);
           setIsAuthenticated(true);
           setPage("dashboard");
@@ -478,6 +488,7 @@ export default function App() {
               ) : (
                 <AddNotaryModal
                   onClose={handleCloseUserModal}
+                  onSwitchType={() => setUserModalMode("company")}
                   notaryToEdit={editingNotary}
                   prefillData={
                     prefillRequest && prefillRequest.role === "notary"

@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Check, ShieldCheck, X } from "lucide-react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
+import { Check, ShieldCheck, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Switch } from "../common";
 
 export function Modal({
@@ -98,6 +98,7 @@ export function ModalInput({
   onChange,
   type = "text",
   icon,
+  required = false,
 }: {
   label: string;
   placeholder: string;
@@ -105,21 +106,216 @@ export function ModalInput({
   onChange: (value: string) => void;
   type?: string;
   icon?: ReactNode;
+  required?: boolean;
 }) {
+  const isDateType = type === "date";
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Safe Date parsing helper for calendar grid view
+  const parseDate = (str: string) => {
+    if (!str) return new Date();
+    const parts = str.split("-");
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+    const partsSlash = str.split("/");
+    if (partsSlash.length === 3) {
+      const month = parseInt(partsSlash[0], 10) - 1;
+      const day = parseInt(partsSlash[1], 10);
+      const year = parseInt(partsSlash[2], 10);
+      return new Date(year, month, day);
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+
+  const [viewDate, setViewDate] = useState(() => parseDate(value));
+
+  // Sync viewDate when modal values load or change
+  useEffect(() => {
+    if (value) {
+      setViewDate(parseDate(value));
+    }
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+  const totalDaysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const days = [];
+  // Prev month padding days
+  for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+    days.push({
+      day: totalDaysInPrevMonth - i,
+      month: month === 0 ? 11 : month - 1,
+      year: month === 0 ? year - 1 : year,
+      isCurrentMonth: false,
+    });
+  }
+  // Current month days
+  for (let i = 1; i <= totalDaysInMonth; i++) {
+    days.push({
+      day: i,
+      month: month,
+      year: year,
+      isCurrentMonth: true,
+    });
+  }
+  // Next month padding days
+  const remainingCells = 42 - days.length;
+  for (let i = 1; i <= remainingCells; i++) {
+    days.push({
+      day: i,
+      month: month === 11 ? 0 : month + 1,
+      year: month === 11 ? year + 1 : year,
+      isCurrentMonth: false,
+    });
+  }
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const getDisplayDate = (val: string) => {
+    if (!val) return "";
+    const parts = val.split("-");
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return `${m}/${d}/${y}`;
+    }
+    return val;
+  };
+
   return (
-    <label className="block">
-      <div className="mb-2 text-[13px] font-semibold text-slate-600">{label}</div>
-      <div className="flex h-11 items-center gap-3 rounded-lg border border-[#E1E7F0] bg-[#F5F8FC] px-4">
-        {icon}
-        <input
-          type={type}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          className="w-full border-0 bg-transparent text-[14px] text-slate-700 outline-none placeholder:text-slate-400"
-        />
-      </div>
-    </label>
+    <div className="relative" ref={isDateType ? containerRef : undefined}>
+      <label className="block">
+        <div className="mb-2 text-[13px] font-semibold text-slate-600">
+          {label}
+          {required ? <span className="ml-1 text-rose-500">*</span> : null}
+        </div>
+        <div 
+          onClick={() => isDateType && setIsOpen(true)}
+          className={`flex h-11 items-center gap-3 rounded-lg border border-[#E1E7F0] bg-[#F5F8FC] px-4 ${
+            isDateType ? "cursor-pointer select-none hover:border-brand-200 transition-colors" : ""
+          }`}
+        >
+          {icon}
+          {isDateType ? (
+            <div className={`w-full text-[14px] ${value ? "text-slate-700 font-medium" : "text-slate-400"}`}>
+              {getDisplayDate(value) || placeholder}
+            </div>
+          ) : (
+            <input
+              type={type}
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder={placeholder}
+              className="w-full border-0 bg-transparent text-[14px] text-slate-700 outline-none placeholder:text-slate-400"
+            />
+          )}
+        </div>
+      </label>
+
+      {isDateType && isOpen && (
+        <div className="absolute left-0 mt-2 z-50 w-[270px] rounded-[18px] border border-[#E1E7F0] bg-white p-4 shadow-[0_16px_38px_rgba(20,48,112,0.12)] animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center justify-between mb-3">
+            <button
+              type="button"
+              onClick={() => setViewDate(new Date(year, month - 1, 1))}
+              className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="text-[13px] font-bold text-slate-800">
+              {monthNames[month]} {year}
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewDate(new Date(year, month + 1, 1))}
+              className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center mb-1">
+            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+              <div key={day} className="text-[10px] font-bold text-slate-400 uppercase py-1">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((item, index) => {
+              const isSelected = value && (() => {
+                const selected = parseDate(value);
+                return (
+                  selected.getDate() === item.day &&
+                  selected.getMonth() === item.month &&
+                  selected.getFullYear() === item.year
+                );
+              })();
+
+              const isToday = (() => {
+                const today = new Date();
+                return (
+                  today.getDate() === item.day &&
+                  today.getMonth() === item.month &&
+                  today.getFullYear() === item.year
+                );
+              })();
+
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    const mm = String(item.month + 1).padStart(2, "0");
+                    const dd = String(item.day).padStart(2, "0");
+                    const formatted = `${item.year}-${mm}-${dd}`;
+                    onChange(formatted);
+                    setIsOpen(false);
+                  }}
+                  className={`h-[28px] w-[28px] rounded-lg text-[11px] font-semibold flex items-center justify-center transition-all ${
+                    isSelected
+                      ? "bg-brand-500 text-white shadow-sm hover:bg-brand-600"
+                      : isToday
+                      ? "border border-brand-200 text-brand-600 hover:bg-brand-50"
+                      : !item.isCurrentMonth
+                      ? "text-slate-300 hover:bg-slate-50"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {item.day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

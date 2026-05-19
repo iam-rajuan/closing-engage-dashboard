@@ -25,26 +25,24 @@ export function UsersNotariesPage({
   const [sortOrder, setSortOrder] = useState("Newest");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Simulated initial load from usersApi to show mock API integration
   useEffect(() => {
     const loadNotaries = async () => {
-      if (notaries.length <= 4) {
-        setIsLoading(true);
-        try {
-          const fetched = await usersApi.getNotaries();
-          setNotaries(fetched);
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setIsLoading(false);
-        }
+      setIsLoading(true);
+      try {
+        const fetched = await usersApi.getNotaries();
+        setNotaries(fetched);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
       }
     };
-    loadNotaries();
-  }, []);
+    void loadNotaries();
+  }, [setNotaries]);
 
   const filtered = notaries.filter((n) => {
     const matchesSearch =
+      (n.publicId || "").toLowerCase().includes(search.toLowerCase()) ||
       n.fullName.toLowerCase().includes(search.toLowerCase()) ||
       n.specialty.toLowerCase().includes(search.toLowerCase()) ||
       n.email.toLowerCase().includes(search.toLowerCase());

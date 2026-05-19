@@ -25,26 +25,24 @@ export function UsersCompaniesPage({
   const [sortOrder, setSortOrder] = useState("Newest");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Simulated initial load from usersApi to show mock API integration
   useEffect(() => {
     const loadCompanies = async () => {
-      if (companies.length === 4 && companies[0].id === "COMP-1") {
-        setIsLoading(true);
-        try {
-          const fetched = await usersApi.getCompanies();
-          setCompanies(fetched);
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setIsLoading(false);
-        }
+      setIsLoading(true);
+      try {
+        const fetched = await usersApi.getCompanies();
+        setCompanies(fetched);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
       }
     };
-    loadCompanies();
-  }, []);
+    void loadCompanies();
+  }, [setCompanies]);
 
   const filtered = companies.filter((c) => {
     const matchesSearch =
+      (c.publicId || "").toLowerCase().includes(search.toLowerCase()) ||
       c.companyName.toLowerCase().includes(search.toLowerCase()) ||
       c.contactPerson.toLowerCase().includes(search.toLowerCase()) ||
       c.businessEmail.toLowerCase().includes(search.toLowerCase());
