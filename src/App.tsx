@@ -7,7 +7,7 @@ import {
   initialRegistrationRequests,
 } from "./data";
 import type { PageKey, CompanyUser, NotaryUser } from "./types";
-import { adminAuth } from "./api/auth";
+import { adminAuth, ApiError } from "./api/auth";
 import { usersApi } from "./api/users";
 import { ordersApi } from "./api/orders";
 import { documentsApi } from "./api/documents";
@@ -74,22 +74,50 @@ export default function App() {
       try {
         const session = await adminAuth.fetchMe();
         setAdminProfile(session.admin.profile);
-        const [accessRequests, fetchedCompanies, fetchedNotaries, fetchedOrders, fetchedDocuments] = await Promise.all([
+        setIsAuthenticated(true);
+
+        const results = await Promise.allSettled([
           usersApi.getAccessRequests(),
           usersApi.getCompanies(),
           usersApi.getNotaries(),
           ordersApi.getOrders(),
           documentsApi.getDocuments(),
         ]);
-        setRegistrationRequests(accessRequests);
-        setCompanies(fetchedCompanies);
-        setNotaries(fetchedNotaries);
-        setOrders(fetchedOrders);
-        setDocuments(fetchedDocuments);
-        setIsAuthenticated(true);
-      } catch {
-        adminAuth.clearToken();
-        setIsAuthenticated(false);
+
+        const [
+          accessRequestsResult,
+          companiesResult,
+          notariesResult,
+          ordersResult,
+          documentsResult,
+        ] = results;
+
+        if (accessRequestsResult.status === "fulfilled") {
+          setRegistrationRequests(accessRequestsResult.value);
+        }
+
+        if (companiesResult.status === "fulfilled") {
+          setCompanies(companiesResult.value);
+        }
+
+        if (notariesResult.status === "fulfilled") {
+          setNotaries(notariesResult.value);
+        }
+
+        if (ordersResult.status === "fulfilled") {
+          setOrders(ordersResult.value);
+        }
+
+        if (documentsResult.status === "fulfilled") {
+          setDocuments(documentsResult.value);
+        }
+      } catch (error) {
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          adminAuth.clearToken();
+          setIsAuthenticated(false);
+        } else {
+          setIsAuthenticated(true);
+        }
       } finally {
         setIsAuthBootstrapping(false);
       }

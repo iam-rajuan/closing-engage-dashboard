@@ -30,11 +30,21 @@ interface ApiResponse<T> {
   data: T;
 }
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 const parseResponse = async <T>(response: Response): Promise<T> => {
   const payload = (await response.json().catch(() => null)) as ApiResponse<T> | null;
 
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || 'Request failed');
+    throw new ApiError(payload?.message || "Request failed", response.status);
   }
 
   return payload.data;
