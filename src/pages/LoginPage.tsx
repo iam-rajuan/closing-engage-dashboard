@@ -3,15 +3,15 @@ import type { FormEvent } from "react";
 import { ShieldCheck, Mail, LockKeyhole, Eye, EyeOff } from "lucide-react";
 import closingEngageLogo from "../assets/closing-engage-logo.svg";
 
-export function LoginPage({ onLogin }: { onLogin: () => void }) {
+export function LoginPage({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
   const [email, setEmail] = useState("admin@closingengage.com");
-  const [password, setPassword] = useState("Admin@2026");
+  const [password, setPassword] = useState("admin@123");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!email.trim() || !password.trim()) {
@@ -20,11 +20,15 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    try {
       setError("");
+      await onLogin(email, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to sign in.");
+    } finally {
       setIsSubmitting(false);
-      onLogin();
-    }, 850); // Premium simulated verification duration
+    }
   };
 
   return (
@@ -104,6 +108,12 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
                 Keep this workstation signed in
               </label>
             </div>
+
+            {!rememberMe && (
+              <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-[13px] text-amber-700">
+                Session persistence is currently token-based. Unchecking this does not change storage behavior yet.
+              </div>
+            )}
 
             {error && <div className="rounded-xl bg-rose-50 border border-rose-100 p-3 text-[13px] text-rose-600 font-medium">{error}</div>}
 

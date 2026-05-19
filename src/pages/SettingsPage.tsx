@@ -1,21 +1,14 @@
 import { useState } from "react";
 import { Check, Mail, FileText, Save, Loader2, KeyRound } from "lucide-react";
+import { adminAuth } from "../api/auth";
 import { Avatar, SectionCard, GhostButton, PrimaryButton, FormSection, NotificationRow } from "../components/common";
 import { profileGradients } from "../data";
 import { useToast } from "../components/Toast";
+import { useAppContext } from "../context/AppContext";
 
 export function SettingsPage() {
   const { showToast } = useToast();
-
-  const initialProfile = {
-    fullName: "Alex Thompson",
-    email: "alex.t@estateflux.com",
-    phone: "+1 (555) 902-4412",
-    companyName: "Estate Flux Title",
-    companyEmail: "ops@estateflux.com",
-    contactNumber: "+1 (555) 200-1100",
-    businessAddress: "782 Commerce Blvd, Austin TX",
-  };
+  const { adminProfile, setAdminProfile } = useAppContext();
 
   const initialSecurity = {
     currentPassword: "",
@@ -29,7 +22,7 @@ export function SettingsPage() {
     documentUpdates: false,
   };
 
-  const [profileForm, setProfileForm] = useState(initialProfile);
+  const [profileForm, setProfileForm] = useState(adminProfile);
   const [securityForm, setSecurityForm] = useState(initialSecurity);
   const [notificationForm, setNotificationForm] = useState(initialNotifications);
 
@@ -37,7 +30,7 @@ export function SettingsPage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  const updateProfile = (field: keyof typeof initialProfile, value: string) =>
+  const updateProfile = (field: keyof typeof adminProfile, value: string) =>
     setProfileForm((current) => ({ ...current, [field]: value }));
   const updateSecurity = (field: keyof typeof initialSecurity, value: string) =>
     setSecurityForm((current) => ({ ...current, [field]: value }));
@@ -54,26 +47,33 @@ export function SettingsPage() {
   };
 
   const handleReset = () => {
-    setProfileForm(initialProfile);
+    setProfileForm(adminProfile);
     setSecurityForm(initialSecurity);
     setNotificationForm(initialNotifications);
     setIsEditing(false);
     showToast("Changes Discarded", { message: "Your settings have been reset to their original state.", variant: "info" });
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (isSavingProfile) return;
     setIsSavingProfile(true);
 
-    // Simulate backend API latency
-    setTimeout(() => {
+    try {
+      const session = await adminAuth.updateProfile(profileForm);
+      setAdminProfile(session.admin.profile);
       setIsSavingProfile(false);
       setIsEditing(false);
       showToast("Profile Updated", { message: "Your profile and company information have been saved successfully.", variant: "success" });
-    }, 1200);
+    } catch (error) {
+      setIsSavingProfile(false);
+      showToast("Update Failed", {
+        message: error instanceof Error ? error.message : "Unable to save profile information.",
+        variant: "error",
+      });
+    }
   };
 
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     if (isUpdatingPassword) return;
     
     if (!securityForm.currentPassword) {
@@ -91,12 +91,22 @@ export function SettingsPage() {
 
     setIsUpdatingPassword(true);
 
-    // Simulate backend API latency
-    setTimeout(() => {
+    try {
+      await adminAuth.updatePassword(
+        securityForm.currentPassword,
+        securityForm.newPassword,
+        securityForm.confirmPassword,
+      );
       setIsUpdatingPassword(false);
       setSecurityForm(initialSecurity); // Clear passwords
       showToast("Password Updated", { message: "Your security credentials have been successfully changed.", variant: "success" });
-    }, 1500);
+    } catch (error) {
+      setIsUpdatingPassword(false);
+      showToast("Update Failed", {
+        message: error instanceof Error ? error.message : "Unable to update password.",
+        variant: "error",
+      });
+    }
   };
 
   return (

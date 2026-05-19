@@ -5,6 +5,7 @@ import { globalSearch } from "../../api/dashboardService";
 import type { SearchResult } from "../../api/dashboardService";
 import { profileGradients } from "../../data";
 import { Avatar } from "../common";
+import { useAppContext } from "../../context/AppContext";
 
 export function TopNavbar({
   onLogout,
@@ -17,6 +18,7 @@ export function TopNavbar({
   onGoToSettings: () => void;
   onViewAllNotifications: () => void;
 }) {
+  const { adminProfile } = useAppContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -189,7 +191,7 @@ export function TopNavbar({
               className="flex items-center gap-3 rounded-xl p-1.5 transition hover:bg-slate-50 text-left focus:outline-none"
             >
               <div className="text-right leading-tight hidden md:block w-[120px] truncate">
-                <div className="text-[13px] font-semibold text-slate-800 truncate">Alex Sterling</div>
+                <div className="text-[13px] font-semibold text-slate-800 truncate">{adminProfile.fullName}</div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Admin</div>
               </div>
               <Avatar className="h-8 w-8" gradient={profileGradients.mark} />
@@ -198,8 +200,8 @@ export function TopNavbar({
             {profileOpen && (
               <div className="profile-dropdown absolute right-0 top-full z-50 mt-2 w-[220px] overflow-hidden rounded-2xl border border-[#e2e8f3] bg-white py-2 shadow-[0_20px_60px_rgba(15,23,42,0.15)] animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="border-b border-slate-100 px-4 py-3 bg-slate-50/30">
-                  <p className="text-[13px] font-bold text-slate-800">Alex Sterling</p>
-                  <p className="text-[11px] text-slate-400 truncate font-medium">alex.sterling@closingengage.com</p>
+                  <p className="text-[13px] font-bold text-slate-800">{adminProfile.fullName}</p>
+                  <p className="text-[11px] text-slate-400 truncate font-medium">{adminProfile.email}</p>
                 </div>
 
                 <div className="px-1.5 py-1.5 space-y-0.5">

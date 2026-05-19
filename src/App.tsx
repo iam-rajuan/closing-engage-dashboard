@@ -9,8 +9,9 @@ import {
   initialRegistrationRequests,
 } from "./data";
 import type { PageKey, CompanyUser, NotaryUser } from "./types";
+import { adminAuth } from "./api/auth";
 import { ToastProvider } from "./components/Toast";
-import { AppContext } from "./context/AppContext";
+import { AppContext, AdminProfile } from "./context/AppContext";
 import { Sidebar, TopNavbar } from "./components/layout";
 import { Modal, AddCompanyUserModal, AddNotaryModal, AssignNotaryModal, CreateOrderModal } from "./components/modals";
 import {
@@ -33,11 +34,22 @@ import {
 type UserModalMode = "company" | "notary";
 
 export default function App() {
+  const defaultAdminProfile: AdminProfile = {
+    fullName: "Closing Engage Admin",
+    email: "admin@closingengage.com",
+    phone: "+1 (555) 010-1000",
+    companyName: "Closing Engage",
+    companyEmail: "admin@closingengage.com",
+    contactNumber: "+1 (555) 010-1000",
+    businessAddress: "Austin, Texas",
+  };
+
   const [page, setPage] = useState<PageKey>(() => {
     const saved = localStorage.getItem("dashboard_active_page");
     return (saved as PageKey) || "dashboard";
   });
-  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem("admin_auth") === "true");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthBootstrapping, setIsAuthBootstrapping] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userModalMode, setUserModalMode] = useState<UserModalMode>("company");
@@ -49,10 +61,47 @@ export default function App() {
     localStorage.setItem("dashboard_active_page", page);
   }, [page]);
 
+  useEffect(() => {
+    const bootstrapAuth = async () => {
+      const token = adminAuth.getToken();
+
+      if (!token) {
+        setIsAuthBootstrapping(false);
+        return;
+      }
+
+      try {
+        const session = await adminAuth.fetchMe();
+        setAdminProfile(session.admin.profile);
+        setIsAuthenticated(true);
+      } catch {
+        adminAuth.clearToken();
+        setIsAuthenticated(false);
+      } finally {
+        setIsAuthBootstrapping(false);
+      }
+    };
+
+    void bootstrapAuth();
+  }, []);
+
   const activeNav = useMemo(() => pageGroups[page], [page]);
 
   const [companies, setCompanies] = useState<CompanyUser[]>([...initialCompanyRows]);
   const [notaries, setNotaries] = useState<NotaryUser[]>([...initialNotaryRows]);
+
+  const [adminProfile, setAdminProfile] = useState<AdminProfile>(() => {
+    const saved = localStorage.getItem("dashboard_admin_profile");
+    try {
+      return saved ? JSON.parse(saved) : defaultAdminProfile;
+    } catch {
+      return defaultAdminProfile;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("dashboard_admin_profile", JSON.stringify(adminProfile));
+  }, [adminProfile]);
   const [selectedCompany, setSelectedCompany] = useState<CompanyUser | null>(() => {
     const saved = localStorage.getItem("dashboard_selected_company");
     try {
@@ -198,11 +247,23 @@ export default function App() {
     setUserModalOpen(true);
   };
 
+  if (isAuthBootstrapping) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-600 shadow-sm">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-500" />
+          Verifying admin session...
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <LoginPage
-        onLogin={() => {
-          localStorage.setItem("admin_auth", "true");
+        onLogin={async (email, password) => {
+          const session = await adminAuth.login(email, password);
+          setAdminProfile(session.admin.profile);
           setIsAuthenticated(true);
           setPage("dashboard");
         }}
@@ -224,6 +285,8 @@ export default function App() {
           setDocuments,
           registrationRequests,
           setRegistrationRequests,
+          adminProfile,
+          setAdminProfile,
           showConfirm,
         }}
       >
@@ -249,9 +312,13 @@ export default function App() {
           />
           <TopNavbar
             onLogout={() => {
-              localStorage.removeItem("admin_auth");
+              adminAuth.clearToken();
               localStorage.removeItem("dashboard_active_page");
               localStorage.removeItem("dashboard_selected_company");
+              localStorage.removeItem("dashboard_selected_notary");
+              localStorage.removeItem("dashboard_selected_order_id");
+              localStorage.removeItem("dashboard_order_back_page");
+              localStorage.removeItem("dashboard_admin_profile");
               setIsAuthenticated(false);
             }}
             onToggleSidebar={() => setIsSidebarOpen(true)}

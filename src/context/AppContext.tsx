@@ -2,6 +2,16 @@ import { createContext, useContext } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { CompanyUser, NotaryUser, RegistrationRequest } from "../types";
 
+export interface AdminProfile {
+  fullName: string;
+  email: string;
+  phone: string;
+  companyName: string;
+  companyEmail: string;
+  contactNumber: string;
+  businessAddress: string;
+}
+
 export interface AppContextType {
   companies: CompanyUser[];
   setCompanies: Dispatch<SetStateAction<CompanyUser[]>>;
@@ -13,6 +23,8 @@ export interface AppContextType {
   setDocuments: Dispatch<SetStateAction<any[]>>;
   registrationRequests: RegistrationRequest[];
   setRegistrationRequests: Dispatch<SetStateAction<RegistrationRequest[]>>;
+  adminProfile: AdminProfile;
+  setAdminProfile: Dispatch<SetStateAction<AdminProfile>>;
   showConfirm: (
     title: string,
     message: string,
