@@ -48,9 +48,14 @@ export function TopNavbar({
       return;
     }
     const timer = setTimeout(async () => {
-      const results = await globalSearch(searchQuery);
-      setSearchResults(results);
-      setSearchOpen(true);
+      try {
+        const results = await globalSearch(searchQuery);
+        setSearchResults(results);
+        setSearchOpen(true);
+      } catch {
+        setSearchResults([]);
+        setSearchOpen(false);
+      }
     }, 250);
     return () => clearTimeout(timer);
   }, [searchQuery]);

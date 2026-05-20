@@ -1,15 +1,7 @@
-/**
- * Dashboard API Service Layer
- */
+import { Building2, CheckCircle2, ClipboardList, FileCog, UserCog } from "lucide-react";
 
-import {
-  dashboardMetrics,
-  quickActions,
-} from "../data";
 import type { MetricCard } from "../data";
 import { adminAuth } from "./auth";
-
-// ── Types ──────────────────────────────────────────────────────────
 
 export interface ChartDataPoint {
   label: string;
@@ -39,17 +31,98 @@ export interface DashboardData {
   quickActions: QuickActionItem[];
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
+export interface DashboardOverview {
+  generatedAt: string;
+  trendPeriod: "7d" | "30d" | "90d";
+  metrics: {
+    totalCompanies: { value: number; note?: string };
+    totalNotaries: { value: number; note?: string };
+    totalOrders: { value: number };
+    pendingApprovalOrders: { value: number; note?: string };
+    completedOrders: { value: number; note?: string };
+  };
+  activeUsersTrend: ChartDataPoint[];
+  quickActions: Array<{
+    key: string;
+    title: string;
+    description: string;
+    tone: string;
+  }>;
+}
+
+export interface AnalyticsOverview {
+  range: "today" | "7d" | "30d" | "90d" | "custom";
+  generatedAt: string;
+  filters: {
+    startDate: string;
+    endDate: string;
+  };
+  metrics: {
+    totalOrders: {
+      value: number;
+      note?: string;
+    };
+    completedOrders: number;
+    pendingOrders: number;
+    activeNotaries: number;
+    titleCompanies: number;
+  };
+  ordersByStatus: Array<{
+    label: string;
+    shortLabel: string;
+    value: number;
+  }>;
+  ordersTrend: Array<{
+    label: string;
+    value: number;
+  }>;
+  topNotaries: Array<{
+    id: string;
+    initials: string;
+    name: string;
+    completedOrders: number;
+  }>;
+  topCompanies: Array<{
+    id: string;
+    name: string;
+    subtitle: string;
+    orderCount: number;
+  }>;
+}
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  subtitle: string;
+  type: "order" | "notary" | "document" | "company";
+}
+
+const TREND_LABELS: Record<DashboardOverview["trendPeriod"], string[]> = {
+  "7d": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  "30d": ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7", "Week 8"],
+  "90d": ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"],
+};
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ||
-  "http://localhost:5000/api/v1";
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "http://localhost:5000/api/v1";
 
 interface ApiEnvelope<T> {
   success: boolean;
   message: string;
   data: T;
 }
+
+const toSafeNumber = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+};
+
+const toSafeString = (value: unknown, fallback = ""): string => (typeof value === "string" ? value : fallback);
 
 const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
   const token = adminAuth.getToken();
@@ -71,176 +144,202 @@ const request = async <T>(path: string, options: RequestInit = {}): Promise<T> =
   return result.data;
 };
 
-// ── Mock Data ──────────────────────────────────────────────────────
+export const createFallbackDashboardOverview = (
+  period: "7d" | "30d" | "90d" = "30d"
+): DashboardOverview => ({
+  generatedAt: new Date().toISOString(),
+  trendPeriod: period,
+  metrics: {
+    totalCompanies: { value: 0 },
+    totalNotaries: { value: 0 },
+    totalOrders: { value: 0 },
+    pendingApprovalOrders: { value: 0 },
+    completedOrders: { value: 0 },
+  },
+  activeUsersTrend: TREND_LABELS[period].map((label) => ({ label, value: 0 })),
+  quickActions: [
+    {
+      key: "add-user",
+      title: "Add User",
+      description: "Manage company and notary accounts when the connection is restored",
+      tone: "blue",
+    },
+    {
+      key: "assign-orders",
+      title: "Assign Orders",
+      description: "Assignment counts will load again when the backend reconnects",
+      tone: "slate",
+    },
+    {
+      key: "approve-documents",
+      title: "Approve Documents",
+      description: "Pending review counts will appear after the backend reconnects",
+      tone: "amber",
+    },
+  ],
+});
 
-const mockChartData: ChartDataPoint[] = [
-  { label: "Week 1", value: 820 },
-  { label: "Week 2", value: 940 },
-  { label: "Week 3", value: 1120 },
-  { label: "Week 4", value: 1240 },
-  { label: "Week 5", value: 1080 },
-  { label: "Week 6", value: 960 },
-  { label: "Week 7", value: 1150 },
-  { label: "Week 8", value: 1340 },
-];
+export const normalizeDashboardOverview = (
+  value: unknown,
+  period: "7d" | "30d" | "90d" = "30d"
+): DashboardOverview => {
+  const fallback = createFallbackDashboardOverview(period);
 
-// ── API Functions ──────────────────────────────────────────────────
+  if (!value || typeof value !== "object") {
+    return fallback;
+  }
 
-/**
- * Fetch all dashboard metrics (KPI cards)
- * Replace body with: const res = await fetch('/api/dashboard/metrics'); return res.json();
- */
-export async function fetchDashboardMetrics(): Promise<MetricCard[]> {
-  await delay(600);
-  return [...dashboardMetrics];
+  const source = value as Partial<DashboardOverview> & Record<string, unknown>;
+  const sourceMetrics =
+    source.metrics && typeof source.metrics === "object" ? (source.metrics as Record<string, unknown>) : {};
+
+  const trendPeriod =
+    source.trendPeriod === "7d" || source.trendPeriod === "30d" || source.trendPeriod === "90d"
+      ? source.trendPeriod
+      : period;
+
+  const metricBlock = (entry: unknown): { value: number; note?: string } => {
+    if (!entry || typeof entry !== "object") return { value: 0 };
+    const row = entry as Record<string, unknown>;
+    return {
+      value: toSafeNumber(row.value),
+      note: typeof row.note === "string" ? row.note : undefined,
+    };
+  };
+
+  const activeUsersTrend = Array.isArray(source.activeUsersTrend)
+    ? source.activeUsersTrend.map((item, index) => {
+        const row = item as Partial<ChartDataPoint> | undefined;
+        return {
+          label: toSafeString(row?.label, TREND_LABELS[trendPeriod][index] ?? `Point ${index + 1}`),
+          value: toSafeNumber(row?.value),
+        };
+      })
+    : fallback.activeUsersTrend;
+
+  const quickActions = Array.isArray(source.quickActions)
+    ? source.quickActions.map((item, index) => {
+        const row = item as Record<string, unknown>;
+        const fallbackAction = fallback.quickActions[index] ?? fallback.quickActions[fallback.quickActions.length - 1];
+        return {
+          key: toSafeString(row.key, fallbackAction.key),
+          title: toSafeString(row.title, fallbackAction.title),
+          description: toSafeString(row.description, fallbackAction.description),
+          tone: toSafeString(row.tone, fallbackAction.tone),
+        };
+      })
+    : fallback.quickActions;
+
+  return {
+    generatedAt: toSafeString(source.generatedAt, fallback.generatedAt),
+    trendPeriod,
+    metrics: {
+      totalCompanies: metricBlock(sourceMetrics.totalCompanies),
+      totalNotaries: metricBlock(sourceMetrics.totalNotaries),
+      totalOrders: metricBlock(sourceMetrics.totalOrders),
+      pendingApprovalOrders: metricBlock(sourceMetrics.pendingApprovalOrders),
+      completedOrders: metricBlock(sourceMetrics.completedOrders),
+    },
+    activeUsersTrend: activeUsersTrend.length ? activeUsersTrend : fallback.activeUsersTrend,
+    quickActions: quickActions.length ? quickActions : fallback.quickActions,
+  };
+};
+
+export async function fetchDashboardOverview(
+  period: "7d" | "30d" | "90d" = "30d"
+): Promise<DashboardOverview> {
+  const result = await request<DashboardOverview>(`/dashboard/overview?period=${encodeURIComponent(period)}`);
+  return normalizeDashboardOverview(result, period);
 }
 
-/**
- * Fetch active users trend chart data
- * Replace body with: const res = await fetch('/api/dashboard/chart?period=30d'); return res.json();
- */
-export async function fetchActiveUsersTrend(
-  _period: "7d" | "30d" | "90d" = "30d"
-): Promise<ChartDataPoint[]> {
-  await delay(800);
-  return [...mockChartData];
-}
-
-/**
- * Fetch admin notifications
- * Replace body with: const res = await fetch('/api/notifications'); return res.json();
- */
 export async function fetchNotifications(): Promise<NotificationItem[]> {
   return request<NotificationItem[]>("/notifications");
 }
 
-/**
- * Mark a notification as read
- * Replace body with: await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
- */
 export async function markNotificationRead(id: string): Promise<void> {
   await request<NotificationItem>(`/notifications/${encodeURIComponent(id)}/read`, { method: "PATCH" });
 }
 
-/**
- * Mark all notifications as read
- */
 export async function markAllNotificationsRead(): Promise<void> {
   await request<Record<string, never>>("/notifications/read-all", { method: "PATCH" });
 }
 
-/**
- * Fetch quick action items
- * Replace body with: const res = await fetch('/api/dashboard/quick-actions'); return res.json();
- */
-export async function fetchQuickActions(): Promise<readonly QuickActionItem[]> {
-  await delay(300);
-  return [...quickActions];
+export const toMetricCards = (overview: DashboardOverview): MetricCard[] => [
+  {
+    title: "Total Title Companies",
+    value: overview.metrics.totalCompanies.value.toLocaleString("en-US"),
+    note: overview.metrics.totalCompanies.note,
+    tone: "blue",
+    icon: Building2,
+  },
+  {
+    title: "Total Notaries",
+    value: overview.metrics.totalNotaries.value.toLocaleString("en-US"),
+    note: overview.metrics.totalNotaries.note,
+    tone: "blue",
+    icon: UserCog,
+  },
+  {
+    title: "Total Orders",
+    value: overview.metrics.totalOrders.value.toLocaleString("en-US"),
+    tone: "slate",
+    icon: ClipboardList,
+  },
+  {
+    title: "Orders Pending Approval",
+    value: overview.metrics.pendingApprovalOrders.value.toLocaleString("en-US"),
+    note: overview.metrics.pendingApprovalOrders.note,
+    tone: "amber",
+    icon: FileCog,
+  },
+  {
+    title: "Completed Orders",
+    value: overview.metrics.completedOrders.value.toLocaleString("en-US"),
+    note: overview.metrics.completedOrders.note,
+    tone: "green",
+    icon: CheckCircle2,
+  },
+];
+
+export const toQuickActions = (overview: DashboardOverview): QuickActionItem[] =>
+  overview.quickActions.map((action) => ({
+    title: action.title,
+    description: action.description,
+    icon: action.title === "Add User" ? UserCog : action.title === "Assign Orders" ? ClipboardList : CheckCircle2,
+    tone: action.tone,
+  }));
+
+export async function fetchQuickActions(
+  period: "7d" | "30d" | "90d" = "30d"
+): Promise<readonly QuickActionItem[]> {
+  const overview = await fetchDashboardOverview(period);
+  return toQuickActions(overview);
 }
 
-/**
- * Export dashboard report (simulated CSV/PDF generation)
- * Replace body with: const res = await fetch('/api/reports/dashboard', { method: 'POST' }); return res.blob();
- */
+export async function fetchAnalyticsOverview(params: {
+  range: "today" | "7d" | "30d" | "90d" | "custom";
+  startDate?: string;
+  endDate?: string;
+}): Promise<AnalyticsOverview> {
+  const query = new URLSearchParams({ range: params.range });
+
+  if (params.startDate) query.set("startDate", params.startDate);
+  if (params.endDate) query.set("endDate", params.endDate);
+
+  return request<AnalyticsOverview>(`/analytics/overview?${query.toString()}`);
+}
+
 export async function exportDashboardReport(
-  _format: "csv" | "pdf" = "pdf"
+  format: "csv" | "pdf" = "pdf"
 ): Promise<{ success: boolean; fileName: string }> {
   await delay(1800);
   return {
     success: true,
-    fileName: `Dashboard_Report_${new Date().toISOString().slice(0, 10)}.${_format}`,
+    fileName: `Dashboard_Report_${new Date().toISOString().slice(0, 10)}.${format}`,
   };
 }
 
-/**
- * Global search across orders, notaries, documents
- * Replace body with: const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`); return res.json();
- */
-export interface SearchResult {
-  id: string;
-  title: string;
-  subtitle: string;
-  type: "order" | "notary" | "document" | "company";
-}
-
 export async function globalSearch(query: string): Promise<SearchResult[]> {
-  await delay(300);
-
   if (!query.trim()) return [];
-
-  const q = query.toLowerCase();
-  const results: SearchResult[] = [];
-
-  // Search orders
-  const orders = [
-    { id: "#ORD-90212", company: "Northway Holdings", notary: "Jane Simmons" },
-    { id: "#ORD-90208", company: "Acme Title Co.", notary: "Unassigned" },
-    { id: "#ORD-88421", company: "Capital Escrow", notary: "Mark Evans" },
-  ];
-  orders.forEach((o) => {
-    if (`${o.id} ${o.company} ${o.notary}`.toLowerCase().includes(q)) {
-      results.push({
-        id: o.id,
-        title: o.id,
-        subtitle: `${o.company} · ${o.notary}`,
-        type: "order",
-      });
-    }
-  });
-
-  // Search notaries
-  const notaries = [
-    { id: "n1", name: "Sarah Harrison", spec: "Residential Specialist" },
-    { id: "n2", name: "James Miller", spec: "Commercial Notary" },
-    { id: "n3", name: "Maria Lopez", spec: "Bilingual / Escrow" },
-    { id: "n4", name: "David Kim", spec: "Title Agent" },
-  ];
-  notaries.forEach((n) => {
-    if (`${n.name} ${n.spec}`.toLowerCase().includes(q)) {
-      results.push({
-        id: n.id,
-        title: n.name,
-        subtitle: n.spec,
-        type: "notary",
-      });
-    }
-  });
-
-  // Search companies
-  const companies = [
-    { id: "c1", name: "Summit Title", contact: "Jane Smith" },
-    { id: "c2", name: "Blue Anchor LLC", contact: "Robert Chen" },
-    { id: "c3", name: "Elite Trust", contact: "Amanda Waller" },
-    { id: "c4", name: "Horizon Settlements", contact: "Michael Scott" },
-  ];
-  companies.forEach((c) => {
-    if (`${c.name} ${c.contact}`.toLowerCase().includes(q)) {
-      results.push({
-        id: c.id,
-        title: c.name,
-        subtitle: c.contact,
-        type: "company",
-      });
-    }
-  });
-
-  // Search documents
-  const docs = [
-    { id: "d1", name: "Closing_Disclosure_Final.pdf", order: "#ORD-882190" },
-    { id: "d2", name: "Wire_Instructions_A-B.pdf", order: "#ORD-991022" },
-    { id: "d3", name: "Insurance_Binder_Proof.pdf", order: "#ORD-771234" },
-    { id: "d4", name: "Title_Search_Report.pdf", order: "#ORD-881552" },
-  ];
-  docs.forEach((d) => {
-    if (`${d.name} ${d.order}`.toLowerCase().includes(q)) {
-      results.push({
-        id: d.id,
-        title: d.name,
-        subtitle: `Order: ${d.order}`,
-        type: "document",
-      });
-    }
-  });
-
-  return results.slice(0, 8);
+  return request<SearchResult[]>(`/search?q=${encodeURIComponent(query.trim())}`);
 }

@@ -1,27 +1,79 @@
 import { useCallback, useEffect, useState } from "react";
 import type { MetricCard } from "../data";
 import {
-  fetchDashboardMetrics,
-  fetchActiveUsersTrend,
+  createFallbackDashboardOverview,
+  fetchDashboardOverview,
   fetchNotifications,
+  normalizeDashboardOverview,
+  type DashboardOverview,
   type ChartDataPoint,
+  type QuickActionItem,
   type NotificationItem,
   markNotificationRead,
   markAllNotificationsRead,
+  toMetricCards,
+  toQuickActions,
 } from "../api/dashboardService";
+
+const DASHBOARD_CACHE_KEY = "dashboard_overview_cache";
+
+const ensureMetricArray = (value: unknown): MetricCard[] => (Array.isArray(value) ? (value as MetricCard[]) : []);
+const ensureChartArray = (value: unknown): ChartDataPoint[] => (Array.isArray(value) ? (value as ChartDataPoint[]) : []);
+const ensureQuickActionArray = (value: unknown): QuickActionItem[] => (Array.isArray(value) ? (value as QuickActionItem[]) : []);
+const ensureNotificationArray = (value: unknown): NotificationItem[] =>
+  Array.isArray(value) ? (value as NotificationItem[]) : [];
+
+const buildSnapshotFromOverview = (overview: DashboardOverview) => ({
+  metrics: toMetricCards(overview),
+  chartData: overview.activeUsersTrend,
+  quickActions: toQuickActions(overview),
+});
+
+const readCachedDashboardOverview = (
+  period: "7d" | "30d" | "90d" = "30d"
+): DashboardOverview | null => {
+  try {
+    const saved = localStorage.getItem(DASHBOARD_CACHE_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    return normalizeDashboardOverview(parsed, period);
+  } catch {
+    return null;
+  }
+};
+
+const createFallbackSnapshot = (
+  period: "7d" | "30d" | "90d" = "30d"
+)=>
+  buildSnapshotFromOverview(createFallbackDashboardOverview(period));
+
+const persistDashboardOverview = (overview: DashboardOverview) => {
+  try {
+    localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(overview));
+  } catch {
+    // Ignore storage write failures and continue rendering.
+  }
+};
 
 interface DashboardState {
   metrics: MetricCard[];
   chartData: ChartDataPoint[];
+  quickActions: QuickActionItem[];
   notifications: NotificationItem[];
   isLoading: boolean;
   isChartLoading: boolean;
   error: string | null;
 }
 
+const cachedOverview = readCachedDashboardOverview("30d");
+const initialSnapshot = cachedOverview
+  ? buildSnapshotFromOverview(cachedOverview)
+  : createFallbackSnapshot("30d");
+
 const initialDashboardState: DashboardState = {
-  metrics: [],
-  chartData: [],
+  metrics: ensureMetricArray(initialSnapshot.metrics),
+  chartData: ensureChartArray(initialSnapshot.chartData),
+  quickActions: ensureQuickActionArray(initialSnapshot.quickActions),
   notifications: [],
   isLoading: true,
   isChartLoading: false,
@@ -56,20 +108,51 @@ export function useDashboardData() {
   const fetchAll = useCallback(async () => {
     updateSharedDashboardState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const [metrics, chartData, notifications] = await Promise.all([
-        fetchDashboardMetrics(),
-        fetchActiveUsersTrend(chartPeriod),
+      const [overviewResult, notificationsResult] = await Promise.allSettled([
+        fetchDashboardOverview(chartPeriod),
         fetchNotifications(),
       ]);
-      updateSharedDashboardState({ metrics, chartData, notifications, isLoading: false, isChartLoading: false, error: null });
-    } catch (err) {
+
+      const overview =
+        overviewResult.status === "fulfilled"
+          ? overviewResult.value
+          : createFallbackDashboardOverview(chartPeriod);
+      const snapshot = buildSnapshotFromOverview(overview);
+
+      if (overviewResult.status === "fulfilled") {
+        persistDashboardOverview(overview);
+      }
+
+      updateSharedDashboardState({
+        metrics: ensureMetricArray(snapshot.metrics),
+        chartData: ensureChartArray(snapshot.chartData),
+        quickActions: ensureQuickActionArray(snapshot.quickActions),
+        notifications: notificationsResult.status === "fulfilled" ? ensureNotificationArray(notificationsResult.value) : [],
+        isLoading: false,
+        isChartLoading: false,
+        error:
+          overviewResult.status === "rejected"
+            ? overviewResult.reason instanceof Error
+              ? overviewResult.reason.message
+              : "Failed to load dashboard data"
+            : null,
+      });
+    } catch {
+      const fallbackSnapshot = buildSnapshotFromOverview(
+        readCachedDashboardOverview(chartPeriod) ?? createFallbackDashboardOverview(chartPeriod)
+      );
       updateSharedDashboardState((prev) => ({
         ...prev,
+        metrics: ensureMetricArray(fallbackSnapshot.metrics),
+        chartData: ensureChartArray(fallbackSnapshot.chartData),
+        quickActions: ensureQuickActionArray(fallbackSnapshot.quickActions),
+        notifications: [],
         isLoading: false,
-        error: err instanceof Error ? err.message : "Failed to load dashboard data",
+        isChartLoading: false,
+        error: "Failed to load dashboard data",
       }));
     }
-  }, []);
+  }, [chartPeriod]);
 
   useEffect(() => {
     fetchAll();
@@ -85,13 +168,31 @@ export function useDashboardData() {
     const updateChart = async () => {
       updateSharedDashboardState((prev) => ({ ...prev, isChartLoading: true }));
       try {
-        const chartData = await fetchActiveUsersTrend(chartPeriod);
+        const overview = await fetchDashboardOverview(chartPeriod);
+        const snapshot = buildSnapshotFromOverview(overview);
+        persistDashboardOverview(overview);
         if (active) {
-          updateSharedDashboardState((prev) => ({ ...prev, chartData, isChartLoading: false }));
+          updateSharedDashboardState((prev) => ({
+            ...prev,
+            metrics: ensureMetricArray(snapshot.metrics),
+            chartData: ensureChartArray(snapshot.chartData),
+            quickActions: ensureQuickActionArray(snapshot.quickActions),
+            isChartLoading: false,
+            error: null,
+          }));
         }
       } catch {
         if (active) {
-          updateSharedDashboardState((prev) => ({ ...prev, isChartLoading: false }));
+          const fallbackSnapshot = buildSnapshotFromOverview(
+            readCachedDashboardOverview(chartPeriod) ?? createFallbackDashboardOverview(chartPeriod)
+          );
+          updateSharedDashboardState((prev) => ({
+            ...prev,
+            metrics: ensureMetricArray(fallbackSnapshot.metrics),
+            chartData: ensureChartArray(fallbackSnapshot.chartData),
+            quickActions: ensureQuickActionArray(fallbackSnapshot.quickActions),
+            isChartLoading: false,
+          }));
         }
       }
     };
@@ -125,6 +226,10 @@ export function useDashboardData() {
 
   return {
     ...state,
+    metrics: ensureMetricArray(state.metrics),
+    chartData: ensureChartArray(state.chartData),
+    quickActions: ensureQuickActionArray(state.quickActions),
+    notifications: ensureNotificationArray(state.notifications),
     chartPeriod,
     setChartPeriod,
     unreadCount,

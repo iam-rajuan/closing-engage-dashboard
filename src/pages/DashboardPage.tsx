@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Download, Loader2, ChevronRight } from "lucide-react";
+import { Loader2, ChevronRight } from "lucide-react";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useToast } from "../components/Toast";
-import { exportDashboardReport } from "../api/dashboardService";
 import { MetricsRowSkeleton, ChartSkeleton, QuickActionSkeleton } from "../components/Skeleton";
 import { MetricPanel, SectionCard, IconBadge } from "../components/common";
-import { quickActions } from "../data";
+import { useAppContext } from "../context/AppContext";
 
 export function DashboardPage({
   onQuickUser,
@@ -16,9 +15,12 @@ export function DashboardPage({
   onAssignOrder: () => void;
   onApproveDocuments: () => void;
 }) {
-  const { metrics, chartData, isLoading, isChartLoading, chartPeriod, setChartPeriod } = useDashboardData();
+  const { metrics, chartData, quickActions, isLoading, isChartLoading, error, chartPeriod, setChartPeriod } = useDashboardData();
   const { showToast } = useToast();
-  const [isExporting, setIsExporting] = useState(false);
+  const { adminProfile } = useAppContext();
+  const safeMetrics = Array.isArray(metrics) ? metrics : [];
+  const safeChartData = Array.isArray(chartData) ? chartData : [];
+  const safeQuickActions = Array.isArray(quickActions) ? quickActions : [];
 
   // Time-aware greeting
   const hour = new Date().getHours();
@@ -29,20 +31,7 @@ export function DashboardPage({
     day: "numeric",
     year: "numeric",
   });
-
-  const handleExport = async () => {
-    setIsExporting(true);
-    try {
-      const result = await exportDashboardReport("pdf");
-      if (result.success) {
-        showToast("Report exported successfully", { message: result.fileName, variant: "success" });
-      }
-    } catch {
-      showToast("Export failed", { message: "Please try again later.", variant: "error" });
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  const firstName = adminProfile.fullName.trim().split(/\s+/)[0] || "Admin";
 
   const periodLabels: Record<string, string> = {
     "7d": "Last 7 days",
@@ -50,7 +39,7 @@ export function DashboardPage({
     "90d": "Last 90 days",
   };
 
-  if (isLoading) {
+  if (isLoading && safeMetrics.length === 0 && safeQuickActions.length === 0) {
     return (
       <div className="space-y-5">
         <div className="flex items-start justify-between">
@@ -71,17 +60,23 @@ export function DashboardPage({
 
   return (
     <div className="space-y-5">
+      {error ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+          Live dashboard data is temporarily unavailable. Showing the last available snapshot or safe fallback values.
+        </div>
+      ) : null}
+
       {/* Header with greeting */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-[26px] font-bold leading-none text-slate-900">{greeting}, Alex</h1>
+          <h1 className="text-[26px] font-bold leading-none text-slate-900">{greeting}, {firstName}</h1>
           <p className="mt-2 text-[14px] text-slate-500">{dateStr} · Real-time performance metrics for Closing Engage.</p>
         </div>
       </div>
 
       {/* Metric Cards — Responsive grid with hover effects */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {metrics.map((metric) => (
+        {safeMetrics.map((metric) => (
           <MetricPanel key={metric.title} {...metric} />
         ))}
       </div>
@@ -92,8 +87,8 @@ export function DashboardPage({
         <SectionCard className="p-5">
           <div className="mb-6 flex items-start justify-between">
             <div>
-              <h3 className="text-[18px] font-semibold text-slate-800">Active Users Trend</h3>
-              <p className="mt-1 text-[13px] text-slate-500">Daily unique engagement across the portal</p>
+              <h3 className="text-[22px] font-bold tracking-[-0.03em] text-slate-900">Active Users Trend</h3>
+              <p className="mt-1.5 text-[14px] leading-6 text-slate-500">Daily unique engagement across the portal</p>
             </div>
             <div className="flex gap-1 rounded-lg bg-[#EFF3FA] p-1">
               {(["7d", "30d", "90d"] as const).map((period) => (
@@ -101,8 +96,8 @@ export function DashboardPage({
                   key={period}
                   onClick={() => setChartPeriod(period)}
                   className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-all focus:outline-none ${chartPeriod === period
-                      ? "bg-white text-brand-500 shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
+                    ? "bg-white text-brand-500 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                     }`}
                 >
                   {periodLabels[period]}
@@ -110,7 +105,7 @@ export function DashboardPage({
               ))}
             </div>
           </div>
-          <EnhancedChart data={chartData} isLoading={isChartLoading} />
+          <EnhancedChart data={safeChartData} isLoading={isChartLoading} />
         </SectionCard>
 
         {/* Quick Actions */}
@@ -120,31 +115,37 @@ export function DashboardPage({
             <p className="mt-1 text-[13px] text-slate-500">Frequent administrative tasks</p>
           </div>
           <div className="space-y-3">
-            {quickActions.map((action) => (
-              <button
-                key={action.title}
-                onClick={
-                  action.title === "Add User"
-                    ? onQuickUser
-                    : action.title === "Assign Orders"
-                      ? onAssignOrder
-                      : action.title === "Approve Documents"
-                        ? onApproveDocuments
-                        : () => showToast((action as any).title, { message: (action as any).description, variant: "info" })
-                }
-                className="quick-action-hover flex w-full items-start gap-4 rounded-xl border border-line bg-white px-4 py-4 text-left group focus:outline-none transition-all"
-              >
-                <IconBadge tone={action.tone}>
-                  <action.icon size={18} />
-                </IconBadge>
-                <div className="flex-1">
-                  <div className="text-[15px] font-semibold text-slate-800 group-hover:text-brand-500 transition-colors">
-                    {action.title}
-                  </div>
-                  <div className="max-w-[190px] text-[13px] leading-5 text-slate-500">{action.description}</div>
-                </div>
-                <ChevronRight size={16} className="mt-1 text-slate-300 group-hover:text-brand-400 transition-colors" />
-              </button>
+            {safeQuickActions.map((action) => (
+              (() => {
+                const ActionIcon = typeof action.icon === "function" ? action.icon : ChevronRight;
+
+                return (
+                  <button
+                    key={action.title}
+                    onClick={
+                      action.title === "Add User"
+                        ? onQuickUser
+                        : action.title === "Assign Orders"
+                          ? onAssignOrder
+                          : action.title === "Approve Documents"
+                            ? onApproveDocuments
+                            : () => showToast((action as any).title, { message: (action as any).description, variant: "info" })
+                    }
+                    className="quick-action-hover flex w-full items-start gap-4 rounded-xl border border-line bg-white px-4 py-4 text-left group focus:outline-none transition-all"
+                  >
+                    <IconBadge tone={action.tone}>
+                      <ActionIcon size={18} />
+                    </IconBadge>
+                    <div className="flex-1">
+                      <div className="text-[15px] font-semibold text-slate-800 group-hover:text-brand-500 transition-colors">
+                        {action.title}
+                      </div>
+                      <div className="max-w-[190px] text-[13px] leading-5 text-slate-500">{action.description}</div>
+                    </div>
+                    <ChevronRight size={16} className="mt-1 text-slate-300 group-hover:text-brand-400 transition-colors" />
+                  </button>
+                );
+              })()
             ))}
           </div>
         </SectionCard>
@@ -153,7 +154,7 @@ export function DashboardPage({
   );
 }
 
-/** Enhanced Area Chart with animated gradient fill + grid lines + interactive tooltips */
+/** Combo statistics chart with vertical bars plus a trend line overlay */
 export function EnhancedChart({
   data,
   isLoading,
@@ -165,21 +166,27 @@ export function EnhancedChart({
 
   if (!data.length) return <div className="h-[240px] flex items-center justify-center text-slate-400">No data available</div>;
 
-  const maxVal = Math.max(...data.map((d) => d.value));
-  const minVal = Math.min(...data.map((d) => d.value));
+  const maxVal = Math.max(...data.map((d) => d.value), 4);
+  const minVal = 0;
   const range = maxVal - minVal || 1;
 
-  const width = 620;
-  const height = 200;
-  const padX = 30;
-  const padTop = 30;
-  const padBottom = 30;
+  const width = 700;
+  const height = 240;
+  const padX = 46;
+  const padTop = 24;
+  const padBottom = 42;
   const chartH = height - padTop - padBottom;
   const chartW = width - padX * 2;
+  const slotWidth = chartW / Math.max(data.length, 1);
+  const barWidth = Math.min(34, Math.max(16, slotWidth * 0.42));
 
   const points = data.map((d, i) => ({
-    x: padX + (i / (data.length - 1)) * chartW,
+    label: d.label,
+    value: d.value,
+    x: padX + (i / Math.max(data.length - 1, 1)) * chartW,
     y: padTop + chartH - ((d.value - minVal) / range) * chartH,
+    barX: padX + i * slotWidth + (slotWidth - barWidth) / 2,
+    barHeight: Math.max(6, ((d.value - minVal) / range) * chartH),
   }));
 
   // Create smooth cubic bezier path
@@ -187,20 +194,17 @@ export function EnhancedChart({
     .map((p, i) => {
       if (i === 0) return `M${p.x},${p.y}`;
       const prev = points[i - 1];
-      const cpx1 = prev.x + (p.x - prev.x) * 0.4;
-      const cpx2 = p.x - (p.x - prev.x) * 0.4;
+      const cpx1 = prev.x + (p.x - prev.x) * 0.35;
+      const cpx2 = p.x - (p.x - prev.x) * 0.35;
       return `C${cpx1},${prev.y} ${cpx2},${p.y} ${p.x},${p.y}`;
     })
     .join(" ");
 
-  const areaPath = `${linePath} L${points[points.length - 1].x},${height - padBottom} L${points[0].x},${height - padBottom} Z`;
-
-  // Y-axis labels
   const ySteps = 4;
   const yLabels = Array.from({ length: ySteps + 1 }, (_, i) => Math.round(minVal + (range / ySteps) * i));
 
   return (
-    <div className="relative h-[240px]" onMouseLeave={() => setHoveredPoint(null)}>
+    <div className="relative h-[280px]" onMouseLeave={() => setHoveredPoint(null)}>
       {isLoading && (
         <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px] transition-all duration-200">
           <Loader2 className="animate-spin text-brand-500" size={24} />
@@ -214,11 +218,12 @@ export function EnhancedChart({
           style={{
             left: `${(points[hoveredPoint].x / width) * 100}%`,
             top: `${(points[hoveredPoint].y / height) * 100}%`,
-            transform: 'translate(-50%, -150%)'
+            transform: 'translate(-50%, -145%)'
           }}
         >
-          <div className="relative bg-slate-900 text-white text-[12px] font-bold px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap animate-in fade-in zoom-in-95 slide-in-from-bottom-2">
-            {data[hoveredPoint].value.toLocaleString()} Users
+          <div className="relative whitespace-nowrap rounded-xl border border-slate-800 bg-slate-950/95 px-3.5 py-2 text-white shadow-xl animate-in fade-in zoom-in-95 slide-in-from-bottom-2">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{points[hoveredPoint].label}</div>
+            <div className="mt-0.5 text-[13px] font-bold">{points[hoveredPoint].value.toLocaleString()} Users</div>
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45" />
           </div>
         </div>
@@ -226,61 +231,88 @@ export function EnhancedChart({
 
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full chart-gradient-fill group cursor-crosshair">
         <defs>
-          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563D6" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#2563D6" stopOpacity="0.01" />
+          <linearGradient id="trendBarGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8FB5FF" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.88" />
+          </linearGradient>
+          <linearGradient id="trendStrokeGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#2563EB" />
+            <stop offset="100%" stopColor="#4F46E5" />
           </linearGradient>
         </defs>
-        {/* Grid lines */}
+
         {yLabels.map((val, i) => {
           const y = padTop + chartH - ((val - minVal) / range) * chartH;
           return (
             <g key={i}>
-              <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-              <text x={padX - 6} y={y + 4} textAnchor="end" className="fill-slate-400 font-semibold" fontSize="10">
+              <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="#E8EEF8" strokeWidth="1" strokeDasharray="4 6" />
+              <text x={padX - 10} y={y + 4} textAnchor="end" className="fill-slate-400 font-semibold" fontSize="11">
                 {val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}
               </text>
             </g>
           );
         })}
-        {/* Area fill */}
-        <path d={areaPath} fill="url(#areaGrad)" className="transition-all duration-500 ease-in-out opacity-0 group-hover:opacity-100" />
-        {/* Line */}
+
+        {points.map((point, index) => {
+          const isHovered = hoveredPoint === index;
+          return (
+            <g key={`bar-${point.label}-${index}`} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(index)}>
+              <rect
+                x={point.barX}
+                y={padTop + chartH - point.barHeight}
+                width={barWidth}
+                height={point.barHeight}
+                rx={10}
+                fill="url(#trendBarGrad)"
+                opacity={hoveredPoint === null ? 0.9 : isHovered ? 1 : 0.45}
+                style={{
+                  filter: isHovered ? "drop-shadow(0px 10px 18px rgba(79,70,229,0.24))" : "none",
+                }}
+                className="transition-all duration-200 ease-out"
+              />
+            </g>
+          );
+        })}
+
         <path
           d={linePath}
           fill="none"
-          stroke="#2563D6"
-          strokeWidth="3.5"
+          stroke="url(#trendStrokeGrad)"
+          strokeWidth="4"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="transition-all duration-500 ease-in-out"
-          style={{ filter: "drop-shadow(0px 6px 8px rgba(29, 93, 195, 0.25))" }}
+          className="transition-all duration-300 ease-out"
+          style={{ filter: "drop-shadow(0px 8px 16px rgba(37, 99, 235, 0.18))" }}
         />
-        {/* Data points */}
+
         {points.map((p, i) => (
-          <g key={i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(i)}>
-            {/* Hit area */}
-            <circle cx={p.x} cy={p.y} r="25" fill="transparent" />
+          <g key={`${p.label}-${i}`} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(i)}>
+            <circle cx={p.x} cy={p.y} r="20" fill="transparent" />
             <circle
               cx={p.x}
               cy={p.y}
-              r={hoveredPoint === i ? "6" : "4"}
-              fill={hoveredPoint === i ? "white" : "#2563D6"}
-              stroke="#2563D6"
-              strokeWidth="2"
+              r={hoveredPoint === i ? "7" : "5"}
+              fill="#ffffff"
+              stroke="#2563EB"
+              strokeWidth={hoveredPoint === i ? "4" : "3"}
               className="transition-all duration-200 ease-out"
             />
           </g>
         ))}
-      </svg>
-      {/* X-axis labels */}
-      <div className="absolute bottom-0 left-[30px] right-[30px] flex justify-between">
-        {data.map((d) => (
-          <span key={d.label} className="text-[11px] font-semibold text-slate-400">
-            {d.label}
-          </span>
+
+        {points.map((p, i) => (
+          <text
+            key={`label-${p.label}-${i}`}
+            x={p.x}
+            y={height - 12}
+            textAnchor="middle"
+            className={`font-semibold transition-all duration-150 ${hoveredPoint === i ? "fill-slate-700" : "fill-slate-400"}`}
+            fontSize="11"
+          >
+            {p.label}
+          </text>
         ))}
-      </div>
+      </svg>
     </div>
   );
 }
