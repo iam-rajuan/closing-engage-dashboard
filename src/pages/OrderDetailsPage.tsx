@@ -41,6 +41,8 @@ export function OrderDetailsPage({
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const [documentError, setDocumentError] = useState("");
   const [rejectNote, setRejectNote] = useState("");
+  const [selectedScanback, setSelectedScanback] = useState<DocumentDetail | null>(null);
+  const [isUpdatingScanbackId, setIsUpdatingScanbackId] = useState<string | null>(null);
 
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -86,9 +88,6 @@ export function OrderDetailsPage({
   const scanbackDocumentIds = new Set(allScanbackDocuments.map((document) => document.id));
   const titleDocuments = documents.filter((document) => !scanbackDocumentIds.has(document.id));
   const scanbackDocuments = reviewableScanbackDocuments;
-  const currentScanback = reviewableScanbackDocuments[0] || null;
-  const isCurrentScanbackApproved =
-    currentScanback?.status === "Approved" || currentScanback?.status === "Verified";
 
   useEffect(() => {
     let isMounted = true;
@@ -200,41 +199,74 @@ export function OrderDetailsPage({
     }
   };
 
+  const isPendingScanback = (document: DocumentDetail) =>
+    document.status !== "Rejected" && document.status !== "Approved" && document.status !== "Verified";
+
   const handleReject = () => {
-    if (!currentScanback) return;
+    if (!selectedScanback) return;
     const comments = rejectNote.trim() || "Rejected by admin. Please review and upload a corrected scanback.";
-    void documentsApi.updateStatusDetail(currentScanback.id, "Rejected", comments).then((updatedDocument) => {
-      setDocuments((prev) =>
-        prev.map((document) => (document.id === currentScanback.id ? updatedDocument : document)),
-      );
-    });
-    void ordersApi.updateStatus(id, "Rejected").then((updatedOrder) => {
-      setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
-    });
-    setActivityLogs((prev) => [
-      { title: "Scanback Rejected by Admin", date: "Just now", tone: "red" },
-      ...prev,
-    ]);
-    setShowRejectModal(false);
-    setRejectNote("");
-    showToast("Scanback Rejected", { message: "The scanback document was marked as rejected.", variant: "error" });
+    setIsUpdatingScanbackId(selectedScanback.id);
+    void documentsApi
+      .updateStatusDetail(selectedScanback.id, "Rejected", comments)
+      .then((updatedDocument) => {
+        setDocuments((prev) =>
+          prev.map((document) => (document.id === selectedScanback.id ? updatedDocument : document)),
+        );
+        return ordersApi.updateStatus(id, "Rejected");
+      })
+      .then((updatedOrder) => {
+        setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
+        setActivityLogs((prev) => [
+          { title: `Scanback Rejected by Admin: ${selectedScanback.fileName}`, date: "Just now", tone: "red" },
+          ...prev,
+        ]);
+        setShowRejectModal(false);
+        setRejectNote("");
+        setSelectedScanback(null);
+        showToast("Scanback Rejected", { message: "The scanback document was marked as rejected.", variant: "error" });
+      })
+      .catch((error) => {
+        showToast("Rejection Failed", {
+          message: error instanceof Error ? error.message : "Unable to reject the scanback document.",
+          variant: "error",
+        });
+      })
+      .finally(() => setIsUpdatingScanbackId(null));
   };
 
-  const handleApprove = () => {
-    if (!currentScanback) return;
-    void documentsApi.updateStatusDetail(currentScanback.id, "Approved").then((updatedDocument) => {
-      setDocuments((prev) =>
-        prev.map((document) => (document.id === currentScanback.id ? updatedDocument : document)),
-      );
-    });
-    void ordersApi.updateStatus(id, "Approved").then((updatedOrder) => {
-      setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
-    });
-    setActivityLogs((prev) => [
-      { title: "Scanback Approved by Admin", date: "Just now", tone: "green" },
-      ...prev,
-    ]);
-    showToast("Scanback Approved", { message: "The scanback document was marked as approved.", variant: "success" });
+  const handleApprove = (scanback: DocumentDetail) => {
+    setIsUpdatingScanbackId(scanback.id);
+    void documentsApi
+      .updateStatusDetail(scanback.id, "Approved")
+      .then((updatedDocument) => {
+        const nextDocuments = documents.map((document) => (document.id === scanback.id ? updatedDocument : document));
+        setDocuments(nextDocuments);
+
+        const nextPendingScanbacks = nextDocuments.filter(
+          (document) => scanbackDocumentIds.has(document.id) && isPendingScanback(document),
+        );
+        const nextOrderStatus: OrderStatus = nextPendingScanbacks.length === 0 ? "Approved" : "Under Review";
+
+        return ordersApi.updateStatus(id, nextOrderStatus).then((updatedOrder) => ({
+          updatedDocument,
+          updatedOrder,
+        }));
+      })
+      .then(({ updatedDocument, updatedOrder }) => {
+        setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
+        setActivityLogs((prev) => [
+          { title: `Scanback Approved by Admin: ${updatedDocument.fileName}`, date: "Just now", tone: "green" },
+          ...prev,
+        ]);
+        showToast("Scanback Approved", { message: "The scanback document was marked as approved.", variant: "success" });
+      })
+      .catch((error) => {
+        showToast("Approval Failed", {
+          message: error instanceof Error ? error.message : "Unable to approve the scanback document.",
+          variant: "error",
+        });
+      })
+      .finally(() => setIsUpdatingScanbackId(null));
   };
 
   return (
@@ -420,57 +452,62 @@ export function OrderDetailsPage({
                 {reviewableScanbackDocuments.length} File{reviewableScanbackDocuments.length === 1 ? "" : "s"}
               </span>
             </div>
-            {currentScanback ? (
-            <div className="rounded-xl border border-line bg-[#F8FAFD] p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#EB5B53] shadow-sm border border-slate-100">
-                  <FileText size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-800 text-[14px] truncate">{currentScanback.fileName}</div>
-                  <div className="text-[13px] text-slate-500 font-medium mt-0.5">Uploaded on {currentScanback.uploadDate}</div>
-                  <div className="mt-2.5 flex items-center gap-2">
-                    <button
-                      onClick={() => openPreview(currentScanback)}
-                      className="flex items-center gap-1.5 rounded-lg border border-[#c3daf9] bg-white px-3 py-1.5 text-[12px] font-bold text-brand-500 shadow-sm hover:bg-[#EEF5FF] hover:border-brand-500 transition focus:outline-none"
-                    >
-                      <Eye size={14} className="text-brand-500" />
-                      Preview
-                    </button>
-                    <button
-                      onClick={() => downloadDocument(currentScanback)}
-                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-650 shadow-sm hover:bg-slate-50 transition focus:outline-none"
-                    >
-                      <Download size={14} className="text-slate-550 text-slate-500" />
-                      Download
-                    </button>
+            {scanbackDocuments.length > 0 ? (
+            <div className="space-y-3">
+              {scanbackDocuments.map((scanback) => {
+                const isUpdatingThisScanback = isUpdatingScanbackId === scanback.id;
+
+                return (
+                  <div key={scanback.id} className="rounded-xl border border-line bg-[#F8FAFD] p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#EB5B53] shadow-sm border border-slate-100">
+                        <FileText size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-slate-800 text-[14px] truncate">{scanback.fileName}</div>
+                        <div className="text-[13px] text-slate-500 font-medium mt-0.5">
+                          {scanback.size} • Uploaded on {scanback.uploadDate}
+                        </div>
+                        <div className="mt-2.5 flex items-center gap-2">
+                          <button
+                            onClick={() => openPreview(scanback)}
+                            className="flex items-center gap-1.5 rounded-lg border border-[#c3daf9] bg-white px-3 py-1.5 text-[12px] font-bold text-brand-500 shadow-sm hover:bg-[#EEF5FF] hover:border-brand-500 transition focus:outline-none"
+                          >
+                            <Eye size={14} className="text-brand-500" />
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => downloadDocument(scanback)}
+                            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-650 shadow-sm hover:bg-slate-50 transition focus:outline-none"
+                          >
+                            <Download size={14} className="text-slate-550 text-slate-500" />
+                            Download
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => {
+                          setSelectedScanback(scanback);
+                          setShowRejectModal(true);
+                        }}
+                        disabled={isUpdatingThisScanback}
+                        className="rounded-lg border border-[#EA8D8C] py-3 text-[14px] font-semibold text-[#D94A45] transition hover:bg-rose-50 focus:outline-none disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                      >
+                        {isUpdatingThisScanback ? "Updating..." : "Reject"}
+                      </button>
+                      <button
+                        onClick={() => handleApprove(scanback)}
+                        disabled={isUpdatingThisScanback}
+                        className="rounded-lg bg-[#1EA94B] py-3 text-[14px] font-semibold text-white transition hover:bg-emerald-600 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        {isUpdatingThisScanback ? "Updating..." : "Approve"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={isCurrentScanbackApproved}
-                  className={`rounded-lg border py-3 text-[14px] font-semibold transition focus:outline-none ${
-                    isCurrentScanbackApproved
-                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                      : "border-[#EA8D8C] text-[#D94A45] hover:bg-rose-50"
-                  }`}
-                >
-                  {isCurrentScanbackApproved ? "Reviewed" : "Reject"}
-                </button>
-                <button
-                  onClick={handleApprove}
-                  disabled={isCurrentScanbackApproved}
-                  className={`rounded-lg py-3 text-[14px] font-semibold text-white transition focus:outline-none ${
-                    isCurrentScanbackApproved
-                      ? "cursor-default bg-[#15803d]"
-                      : "bg-[#1EA94B] hover:bg-emerald-600"
-                  }`}
-                >
-                  {isCurrentScanbackApproved ? "Approved" : "Approve"}
-                </button>
-              </div>
+                );
+              })}
             </div>
             ) : (
               <div className="rounded-xl border border-dashed border-[#DCE5F2] bg-slate-50 px-4 py-8 text-center text-[13px] font-semibold text-slate-500">
@@ -546,7 +583,9 @@ export function OrderDetailsPage({
             <div className="mb-5 flex items-start justify-between">
               <div>
                 <h2 className="text-[20px] font-bold text-slate-900">Reject Notary Scanback</h2>
-                <p className="text-[14px] text-slate-500 mt-1">Are you sure you want to reject this document? This will update the order status to Rejected.</p>
+                <p className="text-[14px] text-slate-500 mt-1">
+                  Are you sure you want to reject {selectedScanback ? `"${selectedScanback.fileName}"` : "this document"}? This will update the order status to Rejected.
+                </p>
               </div>
               <button onClick={() => setShowRejectModal(false)} className="text-slate-400 hover:text-slate-650 focus:outline-none">
                 <X size={20} />
@@ -573,9 +612,10 @@ export function OrderDetailsPage({
               </button>
               <button
                 onClick={handleReject}
-                className="rounded-lg bg-rose-600 px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-rose-700 transition shadow-[0_8px_18px_rgba(220,38,38,0.2)] focus:outline-none"
+                disabled={!selectedScanback || isUpdatingScanbackId === selectedScanback?.id}
+                className="rounded-lg bg-rose-600 px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-rose-700 transition shadow-[0_8px_18px_rgba(220,38,38,0.2)] focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
               >
-                Confirm Reject
+                {isUpdatingScanbackId === selectedScanback?.id ? "Rejecting..." : "Confirm Reject"}
               </button>
             </div>
           </div>
