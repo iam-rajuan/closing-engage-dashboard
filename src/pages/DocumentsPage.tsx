@@ -15,7 +15,17 @@ const parseDocumentDate = (value?: string) => {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
-const getDocumentSortTime = (row: DocumentTableRow) => parseDocumentDate(row[8]) || parseDocumentDate(row[3]);
+const getObjectIdTimestamp = (value?: string) => {
+  if (!value || value.length < 8) {
+    return 0;
+  }
+
+  const seconds = Number.parseInt(value.slice(0, 8), 16);
+  return Number.isNaN(seconds) ? 0 : seconds * 1000;
+};
+
+const getDocumentSortTime = (row: DocumentTableRow) =>
+  parseDocumentDate(row[8]) || getObjectIdTimestamp(row[6]) || parseDocumentDate(row[3]);
 
 const getUploaderCategory = (row: DocumentTableRow) => {
   const role = row[7];
@@ -110,7 +120,17 @@ export function DocumentsPage({ onOpenDocument }: { onOpenDocument: (doc: any) =
         return sortFilter === "Oldest" ? -dateDifference : dateDifference;
       }
 
-      return a[0].localeCompare(b[0]);
+      const idDifference = getObjectIdTimestamp(b[6]) - getObjectIdTimestamp(a[6]);
+      if (idDifference !== 0) {
+        return sortFilter === "Oldest" ? -idDifference : idDifference;
+      }
+
+      const fileNameDifference = a[0].localeCompare(b[0]);
+      if (fileNameDifference !== 0) {
+        return fileNameDifference;
+      }
+
+      return a[6].localeCompare(b[6]);
     });
   }, [dateRangeFilter, documentRows, fileTypeFilter, searchQuery, sortFilter, statusFilter, uploadedByFilter]);
 
