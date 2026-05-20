@@ -90,19 +90,27 @@ export function DashboardPage({
               <h3 className="text-[22px] font-bold tracking-[-0.03em] text-slate-900">Active Users Trend</h3>
               <p className="mt-1.5 text-[14px] leading-6 text-slate-500">Daily unique engagement across the portal</p>
             </div>
-            <div className="flex gap-1 rounded-lg bg-[#EFF3FA] p-1">
-              {(["7d", "30d", "90d"] as const).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setChartPeriod(period)}
-                  className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-all focus:outline-none ${chartPeriod === period
-                    ? "bg-white text-brand-500 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                    }`}
-                >
-                  {periodLabels[period]}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <div className="flex h-[38px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Peak</span>
+                <span className="text-[13px] font-semibold text-slate-900">
+                  {Math.max(...safeChartData.map((point) => point.value), 0).toLocaleString()} users
+                </span>
+              </div>
+              <div className="flex h-[38px] items-center gap-1 rounded-xl bg-[#EFF3FA] p-1">
+                {(["7d", "30d", "90d"] as const).map((period) => (
+                  <button
+                    key={period}
+                    onClick={() => setChartPeriod(period)}
+                    className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all focus:outline-none ${chartPeriod === period
+                      ? "bg-white text-brand-500 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                      }`}
+                  >
+                    {periodLabels[period]}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <EnhancedChart data={safeChartData} isLoading={isChartLoading} />
@@ -211,11 +219,6 @@ export function EnhancedChart({
           <Loader2 className="animate-spin text-brand-500" size={24} />
         </div>
       )}
-
-      <div className="pointer-events-none absolute left-5 top-4 z-10 rounded-full border border-white/70 bg-white/85 px-3 py-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Peak Activity</div>
-        <div className="mt-0.5 text-[15px] font-semibold text-slate-900">{peakValue.toLocaleString()} users</div>
-      </div>
 
       {hoveredPoint !== null && (
         <div
