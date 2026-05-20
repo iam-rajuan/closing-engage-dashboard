@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, Link2, Calendar, MapPin, FileText, User, X, Eye, Download, Upload, Loader2 } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
-import { ordersApi, type OrderStatus } from "../api/orders";
+import { ordersApi, type OrderDetail, type OrderStatus } from "../api/orders";
 import { documentsApi, type DocumentDetail } from "../api/documents";
 import {
   StatusBadge,
@@ -34,6 +34,7 @@ export function OrderDetailsPage({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showAuditTrailModal, setShowAuditTrailModal] = useState(false);
   const [documents, setDocuments] = useState<DocumentDetail[]>([]);
+  const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
   const [activityLogs, setActivityLogs] = useState<Array<{ title: string; date: string; tone: "blue" | "slate" | "green" | "red" }>>([]);
   const [previewDocument, setPreviewDocument] = useState<DocumentDetail | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -98,15 +99,17 @@ export function OrderDetailsPage({
       try {
         setIsLoadingDocuments(true);
         setDocumentError("");
-        const [liveOrders, allDocuments, timeline] = await Promise.all([
+        const [liveOrders, allDocuments, timeline, detail] = await Promise.all([
           ordersApi.getOrders(),
           documentsApi.getDocumentDetails(),
           ordersApi.getTimeline(id),
+          ordersApi.getOrderDetail(id),
         ]);
         if (!isMounted) return;
         setOrders(liveOrders);
         setDocuments(allDocuments.filter((document) => document.orderNumber === id));
         setActivityLogs(timeline);
+        setOrderDetail(detail);
       } catch (error) {
         if (isMounted) setDocumentError(error instanceof Error ? error.message : "Unable to load order documents.");
       } finally {
@@ -376,6 +379,19 @@ export function OrderDetailsPage({
                   <InfoBlock label="Specialty Commission" lines={["Errors & Omissions Insured"]} strongFirst />
                 </div>
               )}
+            </div>
+          </SectionCard>
+
+          <SectionCard className="overflow-hidden">
+            <div className="table-head flex items-center justify-between px-5 py-4 bg-slate-50/40 border-b border-line">
+              <span className="font-semibold text-slate-700">Notary Notes</span>
+            </div>
+            <div className="p-5">
+              <div className="rounded-xl border border-[#E7EDF6] bg-[#F8FAFD] px-4 py-4 text-[14px] leading-[1.7] text-slate-600">
+                {orderDetail?.notaryNotes?.trim()
+                  ? orderDetail.notaryNotes
+                  : "No notary notes have been provided for this order yet."}
+              </div>
             </div>
           </SectionCard>
 

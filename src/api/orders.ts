@@ -27,6 +27,19 @@ export interface OrderTimelineEvent {
   tone: "blue" | "slate" | "green" | "red";
 }
 
+export interface OrderDetail {
+  id: string;
+  clientName: string;
+  propertyAddress: string;
+  location: string;
+  date: string;
+  time: string;
+  status: OrderStatus;
+  notaryNotes: string;
+  specialInstructions: string;
+  timeline?: OrderTimelineEvent[];
+}
+
 export interface CreateOrderPayload {
   titleCompany: string;
   propertyAddress: string;
@@ -70,6 +83,10 @@ export const ordersApi = {
 
   getTimeline(id: string): Promise<OrderTimelineEvent[]> {
     return request<OrderTimelineEvent[]>(`${orderPath(id)}/timeline`);
+  },
+
+  getOrderDetail(id: string): Promise<OrderDetail> {
+    return request<OrderDetail>(orderPath(id));
   },
 
   createOrder(payload: CreateOrderPayload): Promise<OrderRow> {
