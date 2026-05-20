@@ -154,7 +154,7 @@ export function DashboardPage({
   );
 }
 
-/** Combo statistics chart with vertical bars plus a trend line overlay */
+/** Trend chart with a smooth line and subtle area fill */
 export function EnhancedChart({
   data,
   isLoading,
@@ -166,30 +166,26 @@ export function EnhancedChart({
 
   if (!data.length) return <div className="h-[240px] flex items-center justify-center text-slate-400">No data available</div>;
 
-  const maxVal = Math.max(...data.map((d) => d.value), 4);
+  const peakValue = Math.max(...data.map((d) => d.value), 0);
+  const maxVal = Math.max(Math.ceil(peakValue * 1.25), 4);
   const minVal = 0;
   const range = maxVal - minVal || 1;
 
   const width = 700;
-  const height = 240;
-  const padX = 46;
-  const padTop = 24;
-  const padBottom = 42;
+  const height = 260;
+  const padX = 48;
+  const padTop = 22;
+  const padBottom = 46;
   const chartH = height - padTop - padBottom;
   const chartW = width - padX * 2;
-  const slotWidth = chartW / Math.max(data.length, 1);
-  const barWidth = Math.min(34, Math.max(16, slotWidth * 0.42));
 
   const points = data.map((d, i) => ({
     label: d.label,
     value: d.value,
     x: padX + (i / Math.max(data.length - 1, 1)) * chartW,
     y: padTop + chartH - ((d.value - minVal) / range) * chartH,
-    barX: padX + i * slotWidth + (slotWidth - barWidth) / 2,
-    barHeight: Math.max(6, ((d.value - minVal) / range) * chartH),
   }));
 
-  // Create smooth cubic bezier path
   const linePath = points
     .map((p, i) => {
       if (i === 0) return `M${p.x},${p.y}`;
@@ -199,26 +195,35 @@ export function EnhancedChart({
       return `C${cpx1},${prev.y} ${cpx2},${p.y} ${p.x},${p.y}`;
     })
     .join(" ");
+  const areaPath = `${linePath} L${points[points.length - 1].x},${padTop + chartH} L${points[0].x},${padTop + chartH} Z`;
 
   const ySteps = 4;
   const yLabels = Array.from({ length: ySteps + 1 }, (_, i) => Math.round(minVal + (range / ySteps) * i));
+  const activeIndex = hoveredPoint ?? points.length - 1;
 
   return (
-    <div className="relative h-[280px]" onMouseLeave={() => setHoveredPoint(null)}>
+    <div
+      className="relative h-[300px] overflow-hidden rounded-[24px] border border-slate-100 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.08),_transparent_34%),linear-gradient(180deg,_#ffffff_0%,_#f8fbff_100%)] px-2 pt-2"
+      onMouseLeave={() => setHoveredPoint(null)}
+    >
       {isLoading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px] transition-all duration-200">
+        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[24px] bg-white/60 backdrop-blur-[1px] transition-all duration-200">
           <Loader2 className="animate-spin text-brand-500" size={24} />
         </div>
       )}
 
-      {/* Dynamic Tooltip */}
+      <div className="pointer-events-none absolute left-5 top-4 z-10 rounded-full border border-white/70 bg-white/85 px-3 py-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Peak Activity</div>
+        <div className="mt-0.5 text-[15px] font-semibold text-slate-900">{peakValue.toLocaleString()} users</div>
+      </div>
+
       {hoveredPoint !== null && (
         <div
           className="absolute z-30 pointer-events-none transition-all duration-200"
           style={{
             left: `${(points[hoveredPoint].x / width) * 100}%`,
             top: `${(points[hoveredPoint].y / height) * 100}%`,
-            transform: 'translate(-50%, -145%)'
+            transform: "translate(-50%, -145%)",
           }}
         >
           <div className="relative whitespace-nowrap rounded-xl border border-slate-800 bg-slate-950/95 px-3.5 py-2 text-white shadow-xl animate-in fade-in zoom-in-95 slide-in-from-bottom-2">
@@ -231,9 +236,9 @@ export function EnhancedChart({
 
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full chart-gradient-fill group cursor-crosshair">
         <defs>
-          <linearGradient id="trendBarGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8FB5FF" stopOpacity="0.95" />
-            <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.88" />
+          <linearGradient id="trendAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563EB" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="trendStrokeGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#2563EB" />
@@ -245,34 +250,15 @@ export function EnhancedChart({
           const y = padTop + chartH - ((val - minVal) / range) * chartH;
           return (
             <g key={i}>
-              <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="#E8EEF8" strokeWidth="1" strokeDasharray="4 6" />
-              <text x={padX - 10} y={y + 4} textAnchor="end" className="fill-slate-400 font-semibold" fontSize="11">
+              <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="#E7EEF8" strokeWidth="1" strokeDasharray="3 7" />
+              <text x={padX - 10} y={y + 4} textAnchor="end" className="fill-slate-400 font-medium" fontSize="11">
                 {val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}
               </text>
             </g>
           );
         })}
 
-        {points.map((point, index) => {
-          const isHovered = hoveredPoint === index;
-          return (
-            <g key={`bar-${point.label}-${index}`} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(index)}>
-              <rect
-                x={point.barX}
-                y={padTop + chartH - point.barHeight}
-                width={barWidth}
-                height={point.barHeight}
-                rx={10}
-                fill="url(#trendBarGrad)"
-                opacity={hoveredPoint === null ? 0.9 : isHovered ? 1 : 0.45}
-                style={{
-                  filter: isHovered ? "drop-shadow(0px 10px 18px rgba(79,70,229,0.24))" : "none",
-                }}
-                className="transition-all duration-200 ease-out"
-              />
-            </g>
-          );
-        })}
+        <path d={areaPath} fill="url(#trendAreaGrad)" />
 
         <path
           d={linePath}
@@ -291,10 +277,18 @@ export function EnhancedChart({
             <circle
               cx={p.x}
               cy={p.y}
-              r={hoveredPoint === i ? "7" : "5"}
+              r={hoveredPoint === i || activeIndex === i ? "14" : "0"}
+              fill="#2563EB"
+              opacity={hoveredPoint === i ? 0.12 : activeIndex === i ? 0.08 : 0}
+              className="transition-all duration-200 ease-out"
+            />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={hoveredPoint === i || activeIndex === i ? "6.5" : "4.5"}
               fill="#ffffff"
               stroke="#2563EB"
-              strokeWidth={hoveredPoint === i ? "4" : "3"}
+              strokeWidth={hoveredPoint === i || activeIndex === i ? "4" : "3"}
               className="transition-all duration-200 ease-out"
             />
           </g>
@@ -306,7 +300,7 @@ export function EnhancedChart({
             x={p.x}
             y={height - 12}
             textAnchor="middle"
-            className={`font-semibold transition-all duration-150 ${hoveredPoint === i ? "fill-slate-700" : "fill-slate-400"}`}
+            className={`font-medium transition-all duration-150 ${hoveredPoint === i || activeIndex === i ? "fill-slate-700" : "fill-slate-400"}`}
             fontSize="11"
           >
             {p.label}
