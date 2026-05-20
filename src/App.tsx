@@ -43,6 +43,7 @@ export default function App() {
     companyEmail: "quantumerrors@gmail.com",
     contactNumber: "+1 (555) 010-1000",
     businessAddress: "Austin, Texas",
+    avatarUrl: "",
   };
 
   const [page, setPage] = useState<PageKey>(() => {

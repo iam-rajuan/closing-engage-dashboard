@@ -19,6 +19,12 @@ export function TopNavbar({
   onViewAllNotifications: () => void;
 }) {
   const { adminProfile } = useAppContext();
+  const adminInitials = adminProfile.fullName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -199,7 +205,13 @@ export function TopNavbar({
                 <div className="text-[13px] font-semibold text-slate-800 truncate">{adminProfile.fullName}</div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Admin</div>
               </div>
-              <Avatar className="h-8 w-8" gradient={profileGradients.mark} />
+              <Avatar
+                className="h-8 w-8"
+                gradient={profileGradients.mark}
+                src={adminProfile.avatarUrl}
+                alt={`${adminProfile.fullName} avatar`}
+                initials={adminInitials}
+              />
             </button>
 
             {profileOpen && (

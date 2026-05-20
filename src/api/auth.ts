@@ -11,6 +11,7 @@ export interface AdminProfile {
   companyEmail: string;
   contactNumber: string;
   businessAddress: string;
+  avatarUrl?: string;
 }
 
 export interface AdminAccount {

@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Check, Mail, FileText, Save, Loader2, KeyRound } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, Mail, FileText, Save, Loader2, KeyRound, Camera } from "lucide-react";
 import { adminAuth } from "../api/auth";
 import { Avatar, SectionCard, GhostButton, PrimaryButton, FormSection, NotificationRow } from "../components/common";
 import { profileGradients } from "../data";
 import { useToast } from "../components/Toast";
 import { useAppContext } from "../context/AppContext";
+import { prepareAvatarDataUrl } from "../utils/avatarImage";
 
 export function SettingsPage() {
   const { showToast } = useToast();
@@ -29,6 +30,14 @@ export function SettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const profileInitials = profileForm.fullName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   const updateProfile = (field: keyof typeof adminProfile, value: string) =>
     setProfileForm((current) => ({ ...current, [field]: value }));
@@ -52,6 +61,33 @@ export function SettingsPage() {
     setNotificationForm(initialNotifications);
     setIsEditing(false);
     showToast("Changes Discarded", { message: "Your settings have been reset to their original state.", variant: "info" });
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!isEditing) {
+      showToast("Edit Mode Required", {
+        message: "Click Edit Profile before updating the admin profile photo.",
+        variant: "info",
+      });
+      return;
+    }
+
+    try {
+      const avatarUrl = await prepareAvatarDataUrl(file);
+      setProfileForm((current) => ({ ...current, avatarUrl }));
+    } catch (error) {
+      showToast("Upload Failed", {
+        message: error instanceof Error ? error.message : "Unable to process the selected image.",
+        variant: "error",
+      });
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -114,9 +150,32 @@ export function SettingsPage() {
       <SectionCard className="flex items-center justify-between px-5 py-5 border border-slate-100 shadow-sm transition-all duration-300">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Avatar className="h-[52px] w-[52px] rounded-xl" gradient={profileGradients.alex} />
+            <Avatar
+              className="h-[52px] w-[52px] rounded-xl"
+              gradient={profileGradients.alex}
+              src={profileForm.avatarUrl}
+              alt={`${profileForm.fullName} avatar`}
+              initials={profileInitials}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
             <div className="absolute -bottom-1 -right-1 rounded-full bg-brand-500 p-1 text-white shadow-md">
-              <Check size={10} strokeWidth={3} />
+              {isEditing ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center justify-center focus:outline-none"
+                >
+                  <Camera size={10} strokeWidth={3} />
+                </button>
+              ) : (
+                <Check size={10} strokeWidth={3} />
+              )}
             </div>
           </div>
           <div>

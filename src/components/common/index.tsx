@@ -62,8 +62,30 @@ export function GhostButton({
 }
 
 // Avatar
-export function Avatar({ className, gradient }: { className: string; gradient: string }) {
-  return <div className={`${className} overflow-hidden border border-white/50 shadow-sm ${gradient}`} />;
+export function Avatar({
+  className,
+  gradient,
+  src,
+  alt = "Avatar",
+  initials,
+}: {
+  className: string;
+  gradient: string;
+  src?: string;
+  alt?: string;
+  initials?: string;
+}) {
+  return (
+    <div className={`${className} overflow-hidden border border-white/50 shadow-sm ${gradient}`}>
+      {src ? (
+        <img src={src} alt={alt} className="h-full w-full object-cover" />
+      ) : initials ? (
+        <div className="flex h-full w-full items-center justify-center text-[12px] font-bold text-white">
+          {initials}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 // Switch & Toggles
