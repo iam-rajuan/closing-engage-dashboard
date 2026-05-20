@@ -30,6 +30,15 @@ const mergeMessage = (messages: CommunicationMessage[], next: CommunicationMessa
   messages.some((message) => message.id === next.id) ? messages : [...messages, next];
 
 const displayDate = (value: string) => value.replace("\n", " • ");
+const threadActivityLabel = (value?: string) => {
+  if (!value) return "";
+  const timestamp = new Date(value);
+  const now = new Date();
+  if (timestamp.toDateString() === now.toDateString()) {
+    return timestamp.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  }
+  return timestamp.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
 
 export function CommunicationsPage({
   onOpenOrder,
@@ -104,6 +113,7 @@ export function CommunicationsPage({
 
   const selectedRow = rows.find((row) => row.id === selectedOrderId) || rows[0];
   const selectedHasNotary = Boolean(selectedRow?.notary && selectedRow.notary !== "Unassigned");
+  const activeConversationCount = threads.length;
 
   useEffect(() => {
     let isMounted = true;
@@ -277,16 +287,37 @@ export function CommunicationsPage({
   };
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="Communications"
-        description="Review every order conversation, see assigned notaries, and respond without leaving the admin dashboard."
-      />
+    <div className="flex h-[calc(100vh-100px)] flex-col gap-4 overflow-hidden">
+      <div className="shrink-0 rounded-[26px] border border-[#e6ebf5] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-6 py-4 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
+        <div className="flex items-start justify-between gap-6">
+          <PageHeader
+            title="Communications"
+            description="Manage live order conversations, jump across threads quickly, and respond without leaving the admin workspace."
+          />
+          <div className="hidden shrink-0 items-center gap-3 lg:flex">
+            <div className="rounded-2xl border border-[#dbe6f6] bg-white px-4 py-3 text-right shadow-sm">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Active Threads</div>
+              <div className="mt-1 text-[24px] font-black tracking-[-0.04em] text-slate-900">{activeConversationCount}</div>
+            </div>
+            <div className="rounded-2xl border border-[#dbe6f6] bg-white px-4 py-3 text-right shadow-sm">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Selected Order</div>
+              <div className="mt-1 text-[15px] font-extrabold text-brand-700">{selectedRow?.id || "None"}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-[360px_1fr] gap-4">
-        <SectionCard className="overflow-hidden">
-          <div className="border-b border-line bg-white p-4">
-            <div className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-[#F8FAFD] px-4 text-slate-400">
+      <div className="grid min-h-0 flex-1 grid-cols-[340px_1fr] gap-4 overflow-hidden">
+        <SectionCard className="flex min-h-0 h-full flex-col overflow-hidden border border-[#e4eaf4] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]">
+          <div className="border-b border-line bg-white px-4 py-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <div className="text-[16px] font-extrabold tracking-[-0.02em] text-slate-900">Conversation Queue</div>
+                <div className="mt-1 text-[12px] text-slate-500">{activeConversationCount} live thread{activeConversationCount === 1 ? "" : "s"}</div>
+              </div>
+              <div className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-bold text-brand-600">Orders</div>
+            </div>
+            <div className="flex h-11 items-center gap-3 rounded-2xl border border-slate-200 bg-[#F8FAFD] px-4 text-slate-400 shadow-sm">
               <Search size={16} />
               <input
                 value={searchQuery}
@@ -297,7 +328,7 @@ export function CommunicationsPage({
             </div>
           </div>
 
-          <div className="max-h-[calc(100vh-230px)] min-h-[620px] overflow-y-auto bg-[#F8FAFD] p-3">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-transparent p-3">
             {isLoading ? (
               <div className="flex h-[420px] items-center justify-center text-[13px] font-semibold text-slate-500">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -314,39 +345,45 @@ export function CommunicationsPage({
                 {rows.map((row) => {
                   const isActive = row.id === selectedRow?.id;
                   const lastMessage = row.thread?.lastMessage || "Start a new conversation for this order";
+                  const activityLabel = threadActivityLabel(row.thread?.lastMessageAt);
                   return (
                     <button
                       key={row.id}
                       type="button"
                       onClick={() => setSelectedOrderId(row.id)}
-                      className={`w-full rounded-2xl border p-4 text-left transition focus:outline-none ${
+                      className={`w-full rounded-[22px] border px-4 py-3.5 text-left transition focus:outline-none ${
                         isActive
-                          ? "border-brand-300 bg-white shadow-[0_14px_34px_rgba(37,99,214,0.12)]"
-                          : "border-transparent bg-white/70 hover:border-slate-200 hover:bg-white"
+                          ? "border-[#b6cdf8] bg-white shadow-[0_18px_36px_rgba(37,99,214,0.14)] ring-1 ring-[#d9e7ff]"
+                          : "border-transparent bg-white/80 hover:border-slate-200 hover:bg-white hover:shadow-[0_12px_24px_rgba(15,23,42,0.06)]"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-[14px] font-extrabold text-slate-900">{row.id}</div>
                           <div className="mt-1 truncate text-[12px] font-semibold text-slate-700">
                             {row.clientName || row.company}
                           </div>
                         </div>
-                        {row.startable ? (
-                          <span className="rounded-full bg-brand-50 px-2 py-1 text-[10px] font-bold text-brand-600">
-                            Start
-                          </span>
-                        ) : row.thread?.unreadCount ? (
-                          <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                            {row.thread.unreadCount}
-                          </span>
-                        ) : null}
+                        <div className="flex shrink-0 items-center gap-2">
+                          {activityLabel ? <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">{activityLabel}</span> : null}
+                          {row.startable ? (
+                            <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-bold text-brand-600">
+                              Start
+                            </span>
+                          ) : row.thread?.unreadCount ? (
+                            <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                              {row.thread.unreadCount}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-slate-400">
                         <UserRound size={14} className="text-brand-500" />
                         <span className={row.notary === "Unassigned" ? "text-amber-600" : ""}>{row.notary}</span>
                       </div>
-                      <div className="mt-2 line-clamp-2 text-[12px] leading-5 text-slate-600">{lastMessage}</div>
+                      <div className="mt-2 rounded-2xl bg-[#f8fbff] px-3 py-2.5 text-[12px] leading-5 text-slate-600">
+                        <span className="line-clamp-2">{lastMessage}</span>
+                      </div>
                     </button>
                   );
                 })}
@@ -355,10 +392,10 @@ export function CommunicationsPage({
           </div>
         </SectionCard>
 
-        <SectionCard className="flex min-h-[700px] overflow-hidden">
+        <SectionCard className="flex min-h-0 h-full overflow-hidden border border-[#e4eaf4] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
           {selectedRow ? (
-            <div className="flex min-w-0 flex-1 flex-col">
-              <div className="border-b border-line bg-white px-6 py-4">
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <div className="shrink-0 border-b border-line bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-6 py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-3">
@@ -395,7 +432,10 @@ export function CommunicationsPage({
                 </div>
               </div>
 
-              <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto bg-[#F4F7FB] px-6 py-5">
+              <div
+                ref={messagesRef}
+                className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(37,99,214,0.06),transparent_28%),linear-gradient(180deg,#f7faff_0%,#f2f6fc_100%)] px-6 py-5"
+              >
                 {isConversationLoading ? (
                   <div className="flex h-full items-center justify-center text-[13px] font-semibold text-slate-500">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -407,10 +447,10 @@ export function CommunicationsPage({
                     return (
                       <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                         <div
-                          className={`max-w-[68%] rounded-2xl px-4 py-3 text-[14px] shadow-sm ${
+                          className={`max-w-[68%] rounded-[22px] px-4 py-3 text-[14px] shadow-sm ${
                             mine
-                              ? "rounded-br-md bg-brand-600 text-white"
-                              : "rounded-bl-md border border-slate-100 bg-white text-slate-800"
+                              ? "rounded-br-md bg-[linear-gradient(135deg,#2563eb_0%,#1d4ed8_100%)] text-white shadow-[0_14px_30px_rgba(37,99,214,0.22)]"
+                              : "rounded-bl-md border border-slate-100 bg-white text-slate-800 shadow-[0_8px_20px_rgba(15,23,42,0.06)]"
                           }`}
                         >
                           <div className={`mb-1 text-[10px] font-bold uppercase tracking-[0.12em] ${mine ? "text-white/65" : "text-slate-400"}`}>
@@ -426,7 +466,7 @@ export function CommunicationsPage({
                   })
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-center">
-                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-brand-600 shadow-[0_12px_24px_rgba(37,99,214,0.12)]">
                       <MessageCircle size={26} />
                     </div>
                     <div className="text-[16px] font-bold text-slate-900">No messages yet</div>
@@ -437,13 +477,13 @@ export function CommunicationsPage({
                 )}
               </div>
 
-              <div className="border-t border-line bg-white p-3.5">
+              <div className="shrink-0 border-t border-line bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-3.5">
                 {!selectedHasNotary ? (
                   <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-semibold text-amber-700">
                     Assign a notary to this order before sending messages.
                   </div>
                 ) : null}
-                <div className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-[#F8FAFD] p-2">
+                <div className="flex items-end gap-3 rounded-[24px] border border-slate-200 bg-white p-2 shadow-[0_8px_20px_rgba(15,23,42,0.05)]">
                   <textarea
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
@@ -463,7 +503,7 @@ export function CommunicationsPage({
                     type="button"
                     onClick={sendMessage}
                     disabled={!draft.trim() || isSending || !selectedHasNotary}
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-600 text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb_0%,#1d4ed8_100%)] text-white shadow-[0_12px_28px_rgba(37,99,214,0.24)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
                     aria-label="Send message"
                   >
                     {isSending ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
