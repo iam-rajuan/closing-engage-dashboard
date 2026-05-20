@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useAppContext } from "../context/AppContext";
 import { usersApi } from "../api/users";
+import { documentsApi } from "../api/documents";
 import { useToast } from "../components/Toast";
 import {
   GhostButton,
@@ -9,8 +10,8 @@ import {
   TableHeader,
   StatusBadge,
 } from "../components/common";
-import { Eye, FileText, Download, ArrowLeft, Plus, Trash2, X, ShieldCheck, KeyRound, Copy } from "lucide-react";
-import { profileGradients, uploadActivity } from "../data";
+import { Eye, FileText, Download, ArrowLeft, Plus, Trash2, ShieldCheck, KeyRound, Copy } from "lucide-react";
+import { profileGradients } from "../data";
 import type { StatusKey, NotaryUser } from "../types";
 import { firstPasswordVault } from "../utils/firstPasswordVault";
 
@@ -27,7 +28,7 @@ export function NotaryProfilePage({
   onViewOrder?: (orderId: string) => void;
   onViewAllOrders?: () => void;
 }) {
-  const { setNotaries, showConfirm, orders } = useAppContext();
+  const { setNotaries, showConfirm, orders, documents, setDocuments } = useAppContext();
   const { showToast } = useToast();
   const fallbackPassword = notary ? firstPasswordVault.get(notary.id) : null;
   const visiblePassword = notary?.adminVisiblePassword
@@ -48,35 +49,10 @@ export function NotaryProfilePage({
     );
   }
 
-  // Simulated backend API state loaders
+  // Live backend action state
   const [isVerifying, setIsVerifying] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
-
-  // File selection and discard/cancel uploads tracking
-  const [uploadingFileName, setUploadingFileName] = useState<string | null>(null);
-  const [uploadIntervalId, setUploadIntervalId] = useState<any>(null);
-
-  // Dynamic uploads state with localStorage persistence for a real database feel
-  const [uploadedDocs, setUploadedDocs] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`notary_docs_${notary.id}`);
-    return saved ? JSON.parse(saved) : uploadActivity;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(`notary_docs_${notary.id}`, JSON.stringify(uploadedDocs));
-  }, [uploadedDocs, notary.id]);
-
-  // Clean up upload interval on unmount
-  useEffect(() => {
-    return () => {
-      if (uploadIntervalId) {
-        clearInterval(uploadIntervalId);
-      }
-    };
-  }, [uploadIntervalId]);
 
   // Simulated Verify / Approve Notary request
   const handleVerify = () => {
@@ -148,125 +124,81 @@ export function NotaryProfilePage({
     );
   };
 
-  // Simulated document download action with spinner
-  const handleDownload = (docName: string) => {
-    setDownloadingDoc(docName);
-    setTimeout(() => {
-      setDownloadingDoc(null);
-      showToast(`Downloaded ${docName} successfully!`, { variant: "success" });
-    }, 1100);
-  };
-
-  // Trigger system file dialog
   const handleUploadDocumentClick = () => {
-    document.getElementById("notary-pdf-uploader")?.click();
+    showToast("Upload documents from the order details page for this notary.", { variant: "info" });
   };
 
-  // Real local file picker integration with live cancel support
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadingFileName(file.name);
-    setUploadProgress(0);
-
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += 10;
-      setUploadProgress(currentProgress);
-      if (currentProgress >= 100) {
-        clearInterval(interval);
-        setUploadIntervalId(null);
-        setTimeout(() => {
-          const today = new Date().toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          });
-          setUploadedDocs((prev) => [[file.name, `Uploaded ${today}`], ...prev]);
-          setIsUploading(false);
-          setUploadProgress(0);
-          setUploadingFileName(null);
-          showToast(`Uploaded ${file.name} successfully!`, { variant: "success" });
-        }, 350);
-      }
-    }, 150);
-
-    setUploadIntervalId(interval);
-    // Reset file input value so same file can be re-uploaded
-    e.target.value = "";
-  };
-
-  // Cancel / Discard currently running progress
-  const handleDiscardUpload = () => {
-    if (uploadIntervalId) {
-      clearInterval(uploadIntervalId);
-      setUploadIntervalId(null);
+  const handleDownload = async (documentId: string, docName: string) => {
+    setDownloadingDoc(documentId);
+    try {
+      const downloadUrl = await documentsApi.getDownloadUrl(documentId);
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = docName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : `Could not download ${docName}.`, { variant: "error" });
+    } finally {
+      setDownloadingDoc(null);
     }
-    setIsUploading(false);
-    setUploadProgress(0);
-    setUploadingFileName(null);
-    showToast("Document upload discarded.", { variant: "info" });
   };
 
-  // Delete / Discard already uploaded documents
-  const handleDeleteDocument = (docName: string) => {
+  const handleDeleteDocument = (documentId: string, docName: string) => {
     showConfirm(
       "Delete Document?",
       `Are you sure you want to permanently delete the document "${docName}" from this notary's credentials list?`,
       () => {
-        setUploadedDocs((prev) => prev.filter(([title]) => title !== docName));
-        showToast(`Successfully deleted ${docName}!`, { variant: "success" });
+        void documentsApi.deleteDocument(documentId).then(() => {
+          setDocuments((prev) => prev.filter((doc: any) => doc[6] !== documentId));
+          showToast(`Successfully deleted ${docName}!`, { variant: "success" });
+        }).catch((error) => {
+          showToast(error instanceof Error ? error.message : `Could not delete ${docName}.`, { variant: "error" });
+        });
       },
       "Delete",
       "danger"
     );
   };
 
-  // Dynamic assigned orders lookup from global context state
+  // Live assigned orders lookup from global state
   const notaryOrders = useMemo(() => {
-    // If the notary has matching assigned orders in global state, render them
     const matches = orders.filter((o) => o[3] === notary.fullName);
-    if (matches.length > 0) {
-      return matches.map((o) => ({
-        id: o[0],
-        status: o[6],
-        date: o[5],
-      }));
-    }
-    // Fallback to high-fidelity, realistic mock orders tailored to their specialty
-    if (notary.fullName.toLowerCase().includes("sarah")) {
-      return [
-        { id: "#ORD-90212", status: "In Progress", date: "Oct 24, 2023" },
-        { id: "#ORD-90208", status: "Approved", date: "Oct 22, 2023" },
-        { id: "#ORD-88421", status: "Completed", date: "Oct 18, 2023" },
-      ];
-    }
-    return [
-      { id: "#ORD-77401", status: "Completed", date: "May 10, 2026" },
-      { id: "#ORD-77290", status: "Assigned", date: "May 08, 2026" },
-    ];
+    return matches.map((o) => ({
+      id: o[0],
+      status: o[6],
+      date: o[5],
+    }));
   }, [orders, notary.fullName]);
 
-  // Select profile gradient based on name or fallback to a gorgeous default
+  const uploadedDocs = useMemo(() => {
+    const notaryOrderIds = new Set(notaryOrders.map((order) => order.id));
+    return documents
+      .filter((doc: any) => {
+        const orderId = doc[1];
+        const uploadedBy = String(doc[2] || "").toLowerCase();
+        return notaryOrderIds.has(orderId) || uploadedBy.includes(notary.fullName.toLowerCase());
+      })
+      .map((doc: any) => ({
+        title: doc[0],
+        orderId: doc[1],
+        date: doc[3],
+        id: doc[6],
+      }));
+  }, [documents, notary.fullName, notaryOrders]);
+
   const getGradient = () => {
     if (notary.fullName.toLowerCase().includes("sarah")) return profileGradients.jane;
     if (notary.fullName.toLowerCase().includes("james")) return profileGradients.mark;
     return profileGradients.alex;
   };
 
+  const avatarInitials = (notary.initials || notary.fullName.slice(0, 2)).toUpperCase();
+
   return (
     <div className="space-y-5">
-      {/* Hidden native input for system local file selection */}
-      <input
-        id="notary-pdf-uploader"
-        type="file"
-        accept=".pdf"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-
       <div className="flex items-center gap-2 text-[12px] text-slate-500 font-semibold tracking-wide">
         <button onClick={onBack} className="hover:text-brand-500 transition">
           Notaries
@@ -356,7 +288,13 @@ export function NotaryProfilePage({
         <SectionCard className="min-h-[244px] overflow-hidden rounded-[8px] border-0 bg-white p-0 shadow-sm">
           <div className="flex h-full gap-7 px-7 py-7">
             <div className="relative h-[132px] w-[132px] shrink-0 overflow-visible rounded-[18px] bg-[#e8f0ff] p-1.5 ring-1 ring-[#d8e5fb]">
-              <Avatar className="h-full w-full rounded-[14px]" gradient={getGradient()} />
+              <Avatar
+                className="h-full w-full rounded-[14px]"
+                gradient={getGradient()}
+                src={notary.avatarUrl}
+                alt={`${notary.fullName} avatar`}
+                initials={avatarInitials}
+              />
               <div className="absolute -bottom-2 left-[68px] rounded-[10px] border border-brand-100 bg-[#EEF5FF] px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-brand-700 shadow-sm">
                 {notary.status}
               </div>
@@ -404,7 +342,7 @@ export function NotaryProfilePage({
             </div>
             <div className="rounded-xl bg-white/10 px-3 py-2">
               <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Specialty</div>
-              <div className="mt-1 truncate text-[14px] font-bold">{notary.specialty || "Mobile Signing"}</div>
+              <div className="mt-1 truncate text-[14px] font-bold">{notary.specialty || "Not Provided"}</div>
             </div>
           </div>
         </div>
@@ -510,73 +448,43 @@ export function NotaryProfilePage({
             <h3 className="text-[18px] font-semibold text-slate-900">Upload Activity</h3>
             <button
               onClick={handleUploadDocumentClick}
-              disabled={isUploading}
               className="text-[12px] font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100/80 px-3 py-1.5 rounded-md transition focus:outline-none flex items-center gap-1.5"
             >
-              {isUploading ? (
-                <>
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Plus size={14} />
-                  Upload Document
-                </>
-              )}
+              <Plus size={14} />
+              Upload Document
             </button>
           </div>
 
-          {isUploading && (
-            <div className="mb-5 rounded-xl border border-dashed border-brand-200 bg-brand-50/20 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] font-semibold text-slate-500 truncate max-w-[170px]">
-                  Uploading {uploadingFileName}...
-                </span>
-                <span className="text-[12px] font-bold text-brand-600 flex items-center gap-2">
-                  {uploadProgress}%
-                  <button
-                    onClick={handleDiscardUpload}
-                    className="p-1 hover:bg-slate-200/80 rounded text-slate-400 hover:text-rose-500 transition focus:outline-none"
-                    title="Discard Upload"
-                  >
-                    <X size={14} />
-                  </button>
-                </span>
-              </div>
-              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand-500 rounded-full transition-all duration-200"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
           <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
-            {uploadedDocs.map(([title, date]) => (
-              <div key={title} className="flex items-center gap-4 rounded-xl border border-line px-4 py-3.5 hover:border-slate-300 hover:bg-slate-50/50 transition">
+            {uploadedDocs.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-center text-[13px] font-medium text-slate-500">
+                No real upload activity is available for this notary yet.
+              </div>
+            ) : uploadedDocs.map((doc) => (
+              <div key={doc.id} className="flex items-center gap-4 rounded-xl border border-line px-4 py-3.5 hover:border-slate-300 hover:bg-slate-50/50 transition">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-500">
                   <FileText size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-800 text-[14px] truncate">{title}</div>
-                  <div className="text-[12px] text-slate-500 mt-0.5">{date}</div>
+                  <div className="font-semibold text-slate-800 text-[14px] truncate">{doc.title}</div>
+                  <div className="text-[12px] text-slate-500 mt-0.5">
+                    {doc.orderId} · {doc.date}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => handleDownload(title)}
+                    onClick={() => void handleDownload(doc.id, doc.title)}
                     disabled={downloadingDoc !== null}
                     className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
                   >
-                    {downloadingDoc === title ? (
+                    {downloadingDoc === doc.id ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
                     ) : (
                       <Download size={16} />
                     )}
                   </button>
                   <button
-                    onClick={() => handleDeleteDocument(title)}
+                    onClick={() => handleDeleteDocument(doc.id, doc.title)}
                     className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition focus:outline-none"
                     title="Discard Document"
                   >
