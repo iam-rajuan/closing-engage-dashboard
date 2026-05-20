@@ -1,35 +1,90 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, X, ShieldCheck } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { ordersApi } from "../../api/orders";
-import { assignableNotaries } from "../../data";
+import { usersApi } from "../../api/users";
 import { StatusBadge } from "../common";
-import type { StatusKey } from "../../types";
+import type { NotaryUser, StatusKey } from "../../types";
 
 export function AssignNotaryModal({ orderId, onClose }: { orderId: string | null; onClose: () => void }) {
-  const { orders, setOrders } = useAppContext();
+  const { orders, setOrders, notaries, setNotaries } = useAppContext();
   const [query, setQuery] = useState("");
+  const [availableNotaries, setAvailableNotaries] = useState<NotaryUser[]>(notaries);
+  const [selectedNotaryId, setSelectedNotaryId] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isAssigning, setIsAssigning] = useState(false);
   
   const order = orders.find((o: any) => o[0] === orderId) || orders[0];
   const orderNum = order ? order[0] : "#ORD-90212";
   const orderLocation = order ? order[4].replace("\n", ", ") : "123 Maple St, Austin, TX";
 
-  const [selectedNotary, setSelectedNotary] = useState<string>(
-    order && order[3] !== "Unassigned" ? order[3] : "Sarah Jenkins"
-  );
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNotaries = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
+        const rows = await usersApi.getNotaries();
+        if (!isMounted) return;
+
+        setNotaries(rows);
+        setAvailableNotaries(rows);
+
+        const currentAssignedName = order && order[3] !== "Unassigned" ? order[3] : "";
+        const currentAssigned = rows.find((notary) => notary.fullName === currentAssignedName);
+        const firstAssignable = rows.find((notary) => notary.status !== "Inactive");
+        setSelectedNotaryId(currentAssigned?.id || firstAssignable?.id || "");
+      } catch (loadError) {
+        if (!isMounted) return;
+        setError(loadError instanceof Error ? loadError.message : "Unable to load notary users.");
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    void loadNotaries();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [order, setNotaries]);
   
-  const visibleNotaries = assignableNotaries.filter(([name, meta]) =>
-    `${name} ${meta}`.toLowerCase().includes(query.toLowerCase())
-  );
+  const visibleNotaries = availableNotaries
+    .filter((notary) => notary.status !== "Inactive")
+    .filter((notary) =>
+      `${notary.fullName} ${notary.serviceArea || ""} ${notary.specialty || ""} ${notary.email}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+    );
 
   const handleAssign = async () => {
     if (!orderId) {
       onClose();
       return;
     }
-    const updatedOrder = await ordersApi.assignNotary(orderId, selectedNotary);
-    setOrders((prev: any) => prev.map((o: any) => (o[0] === orderId ? updatedOrder : o)));
-    onClose();
+    const selectedNotary = availableNotaries.find((notary) => notary.id === selectedNotaryId);
+    if (!selectedNotary) {
+      setError("Select a real notary user account before assigning.");
+      return;
+    }
+
+    try {
+      setIsAssigning(true);
+      setError("");
+      const updatedOrder = await ordersApi.assignNotary(orderId, {
+        notaryName: selectedNotary.fullName,
+        notaryId: selectedNotary.id,
+        notaryEmail: selectedNotary.email,
+      });
+      setOrders((prev: any) => prev.map((o: any) => (o[0] === orderId ? updatedOrder : o)));
+      onClose();
+    } catch (assignError) {
+      setError(assignError instanceof Error ? assignError.message : "Unable to assign notary.");
+    } finally {
+      setIsAssigning(false);
+    }
   };
 
   return (
@@ -63,12 +118,29 @@ export function AssignNotaryModal({ orderId, onClose }: { orderId: string | null
         </label>
       </div>
       <div className="mt-8 space-y-10">
-        {visibleNotaries.map(([name, meta, status]) => {
-          const isSelected = selectedNotary === name;
+        {isLoading ? (
+          <div className="rounded-2xl border border-[#E5EBF6] bg-white p-6 text-center text-[15px] font-semibold text-slate-500">
+            Loading real notary accounts...
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-[14px] font-semibold text-red-600">
+            {error}
+          </div>
+        ) : visibleNotaries.length === 0 ? (
+          <div className="rounded-2xl border border-[#E5EBF6] bg-white p-6 text-center text-[15px] font-semibold text-slate-500">
+            No active notary accounts found.
+          </div>
+        ) : visibleNotaries.map((notary) => {
+          const isSelected = selectedNotaryId === notary.id;
+          const meta = [notary.serviceArea || "Service area not provided", notary.specialty || "Notary Signing Agent"]
+            .filter(Boolean)
+            .join(" • ");
+          const status = notary.verify ? "Verified" : notary.status;
+
           return (
             <button
-              key={name}
-              onClick={() => setSelectedNotary(name)}
+              key={notary.id}
+              onClick={() => setSelectedNotaryId(notary.id)}
               className="flex w-full items-center justify-between text-left focus:outline-none"
             >
               <div className="flex items-start gap-5">
@@ -81,10 +153,11 @@ export function AssignNotaryModal({ orderId, onClose }: { orderId: string | null
                 </span>
                 <div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[20px] font-semibold text-slate-800">{name}</span>
+                    <span className="text-[20px] font-semibold text-slate-800">{notary.fullName}</span>
                     <StatusBadge status={status as StatusKey} />
                   </div>
                   <div className="mt-1 text-[16px] text-slate-500">{meta}</div>
+                  <div className="mt-1 text-[13px] font-medium text-slate-400">{notary.email}</div>
                 </div>
               </div>
               <div className="rounded-full p-2 text-brand-500">
@@ -97,9 +170,10 @@ export function AssignNotaryModal({ orderId, onClose }: { orderId: string | null
       <div className="mt-10 grid grid-cols-2 gap-4">
         <button
           onClick={handleAssign}
-          className="rounded-xl bg-brand-500 py-4 text-[16px] font-semibold text-white shadow-md hover:bg-brand-600 transition"
+          disabled={isLoading || isAssigning || !selectedNotaryId}
+          className="rounded-xl bg-brand-500 py-4 text-[16px] font-semibold text-white shadow-md hover:bg-brand-600 transition disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Assign Notary
+          {isAssigning ? "Assigning..." : "Assign Notary"}
         </button>
         <button
           onClick={onClose}

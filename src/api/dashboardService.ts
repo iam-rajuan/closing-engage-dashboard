@@ -1,9 +1,5 @@
 /**
  * Dashboard API Service Layer
- * 
- * All functions return mock data with simulated network latency.
- * To connect to a real backend, replace the function bodies with
- * actual fetch/axios calls — the signatures and return types stay the same.
  */
 
 import {
@@ -88,49 +84,6 @@ const mockChartData: ChartDataPoint[] = [
   { label: "Week 8", value: 1340 },
 ];
 
-const mockNotifications: NotificationItem[] = [
-  {
-    id: "n1",
-    title: "New Order Received",
-    message: "Order #ORD-90215 from Summit Title needs assignment.",
-    time: "2 min ago",
-    read: false,
-    type: "order",
-  },
-  {
-    id: "n2",
-    title: "Document Approved",
-    message: "Closing_Disclosure_Final.pdf has been approved.",
-    time: "15 min ago",
-    read: false,
-    type: "document",
-  },
-  {
-    id: "n3",
-    title: "Notary Verified",
-    message: "Sarah Harrison's credentials have been verified.",
-    time: "1 hour ago",
-    read: true,
-    type: "user",
-  },
-  {
-    id: "n4",
-    title: "System Maintenance",
-    message: "Scheduled maintenance window: Sat 2:00 AM - 4:00 AM EST.",
-    time: "3 hours ago",
-    read: true,
-    type: "system",
-  },
-  {
-    id: "n5",
-    title: "28 Documents Pending",
-    message: "Documents are awaiting your review and approval.",
-    time: "5 hours ago",
-    read: true,
-    type: "document",
-  },
-];
-
 // ── API Functions ──────────────────────────────────────────────────
 
 /**
@@ -158,11 +111,7 @@ export async function fetchActiveUsersTrend(
  * Replace body with: const res = await fetch('/api/notifications'); return res.json();
  */
 export async function fetchNotifications(): Promise<NotificationItem[]> {
-  try {
-    return await request<NotificationItem[]>("/notifications");
-  } catch {
-    return [...mockNotifications];
-  }
+  return request<NotificationItem[]>("/notifications");
 }
 
 /**

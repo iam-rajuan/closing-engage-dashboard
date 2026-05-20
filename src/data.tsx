@@ -511,6 +511,8 @@ export const statusConfig = {
   Received: "bg-[#EDF1F6] text-[#7B8492]",
   Completed: "bg-[#DCF9E5] text-[#3DAE66]",
   "In Progress": "bg-[#E7EEFF] text-[#336DDA]",
+  Submitted: "bg-[#E7EEFF] text-[#336DDA]",
+  "Pending Upload": "bg-[#FFF4DB] text-[#C79016]",
   Verified: "bg-[#DFEAFE] text-[#2E68CF]",
   "Pending Review": "bg-[#FFE8D8] text-[#CE7E3B]",
   "Under Review": "bg-[#E7EEFF] text-[#336DDA]",

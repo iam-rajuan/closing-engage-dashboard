@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Link2, Calendar, MapPin, FileText, User, X, Eye, Download } from "lucide-react";
+import { ArrowLeft, Link2, Calendar, MapPin, FileText, User, X, Eye, Download, Upload, Loader2 } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 import { ordersApi, type OrderStatus } from "../api/orders";
+import { documentsApi, type DocumentDetail } from "../api/documents";
 import {
   StatusBadge,
   GhostButton,
@@ -16,7 +17,6 @@ import { Modal } from "../components/modals/Modal";
 import { useToast } from "../components/Toast";
 import { stepItems } from "../data";
 import type { StatusKey } from "../types";
-import { DocumentMockPreview } from "../components/DocumentMockPreview";
 
 export function OrderDetailsPage({
   orderId,
@@ -33,17 +33,14 @@ export function OrderDetailsPage({
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showAuditTrailModal, setShowAuditTrailModal] = useState(false);
-
-  const [localDocs, setLocalDocs] = useState([
-    { name: "Closing_Package.pdf", meta: "4.2 MB • Uploaded 2h ago" },
-    { name: "Instructions_Sheet.pdf", meta: "1.1 MB • Uploaded 2h ago" },
-  ]);
-
-  const [localLogs, setLocalLogs] = useState([
-    { title: "Order created by System", date: "Oct 20, 2024 • 09:45 AM", tone: "blue" },
-    { title: "Notary John Doe assigned", date: "Oct 21, 2024 • 02:20 PM", tone: "slate" },
-    { title: "Documents uploaded by John Doe", date: "Oct 24, 2024 • 04:15 PM", tone: "green" },
-  ]);
+  const [documents, setDocuments] = useState<DocumentDetail[]>([]);
+  const [activityLogs, setActivityLogs] = useState<Array<{ title: string; date: string; tone: "blue" | "slate" | "green" | "red" }>>([]);
+  const [previewDocument, setPreviewDocument] = useState<DocumentDetail | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  const [documentError, setDocumentError] = useState("");
+  const [rejectNote, setRejectNote] = useState("");
 
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -74,20 +71,70 @@ export function OrderDetailsPage({
   if (!activeOrder) return null;
 
   const [id, company, , notaryName, location, date, status, avatar] = activeOrder;
+  const normalizedNotaryName = notaryName.trim().toLowerCase();
+  const allScanbackDocuments = documents.filter((document) => {
+    if (document.uploaderRole === "notary") return true;
+    if (!normalizedNotaryName || normalizedNotaryName === "unassigned") return false;
+    return document.uploadedBy.trim().toLowerCase() === normalizedNotaryName;
+  });
+  const approvedScanbackDocuments = allScanbackDocuments.filter(
+    (document) => document.status === "Approved" || document.status === "Verified",
+  );
+  const reviewableScanbackDocuments = allScanbackDocuments.filter(
+    (document) => document.status !== "Rejected" && document.status !== "Approved" && document.status !== "Verified",
+  );
+  const scanbackDocumentIds = new Set(allScanbackDocuments.map((document) => document.id));
+  const titleDocuments = documents.filter((document) => !scanbackDocumentIds.has(document.id));
+  const scanbackDocuments = reviewableScanbackDocuments;
+  const currentScanback = reviewableScanbackDocuments[0] || null;
+  const isCurrentScanbackApproved =
+    currentScanback?.status === "Approved" || currentScanback?.status === "Verified";
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadOrderArtifacts = async () => {
+      if (!id) return;
+
+      try {
+        setIsLoadingDocuments(true);
+        setDocumentError("");
+        const [liveOrders, allDocuments, timeline] = await Promise.all([
+          ordersApi.getOrders(),
+          documentsApi.getDocumentDetails(),
+          ordersApi.getTimeline(id),
+        ]);
+        if (!isMounted) return;
+        setOrders(liveOrders);
+        setDocuments(allDocuments.filter((document) => document.orderNumber === id));
+        setActivityLogs(timeline);
+      } catch (error) {
+        if (isMounted) setDocumentError(error instanceof Error ? error.message : "Unable to load order documents.");
+      } finally {
+        if (isMounted) setIsLoadingDocuments(false);
+      }
+    };
+
+    void loadOrderArtifacts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, setOrders]);
 
   // Dynamically determine the timeline progress index based on status
   const currentStep = useMemo(() => {
     if (status === "Completed") return 4;
     if (status === "Approved") return 3;
-    if (status === "Under Review" || status === "Rejected") return 2;
-    if (status === "Assigned") return 1;
+    if (status === "Under Review" || status === "Rejected" || status === "Submitted") return 2;
+    if (status === "Assigned" || status === "In Progress" || status === "Pending Upload") return 1;
     return 0; // Received
   }, [status]);
 
   const handleStatusChange = async (newStatus: string) => {
     const updatedOrder = await ordersApi.updateStatus(id, newStatus as OrderStatus);
     setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
-    setLocalLogs((prev) => [
+    setActivityLogs((prev) => [
       { title: `Order status changed to "${newStatus}"`, date: "Just now", tone: "blue" },
       ...prev,
     ]);
@@ -96,40 +143,94 @@ export function OrderDetailsPage({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      setLocalDocs((prev) => [
-        ...prev,
-        {
-          name: file.name,
-          meta: `${sizeMB} MB • Uploaded just now`
-        }
-      ]);
-      setLocalLogs((prev) => [
-        { title: `Document "${file.name}" uploaded by Admin`, date: "Just now", tone: "blue" },
-        ...prev,
-      ]);
-      showToast("Document Uploaded", { message: `"${file.name}" has been uploaded.`, variant: "success" });
+    e.target.value = "";
+    if (!file) return;
+
+    void (async () => {
+      try {
+        setIsUploadingDocument(true);
+        const uploadedDocument = await documentsApi.uploadDocument(id, file);
+        setDocuments((prev) => [uploadedDocument, ...prev]);
+        setActivityLogs((prev) => [
+          { title: `Document "${file.name}" uploaded by Admin`, date: "Just now", tone: "blue" },
+          ...prev,
+        ]);
+        showToast("Document Uploaded", { message: `"${file.name}" has been uploaded.`, variant: "success" });
+      } catch (error) {
+        showToast("Upload Failed", {
+          message: error instanceof Error ? error.message : "Unable to upload document.",
+          variant: "error",
+        });
+      } finally {
+        setIsUploadingDocument(false);
+      }
+    })();
+  };
+
+  const openPreview = async (document: DocumentDetail) => {
+    try {
+      setPreviewDocument(document);
+      setPreviewUrl("");
+      setShowPreviewModal(true);
+      const url = await documentsApi.getPreviewUrl(document.id);
+      setPreviewUrl(url);
+    } catch (error) {
+      showToast("Preview Unavailable", {
+        message: error instanceof Error ? error.message : "Unable to generate document preview URL.",
+        variant: "error",
+      });
+    }
+  };
+
+  const downloadDocument = async (document: DocumentDetail) => {
+    try {
+      const url = await documentsApi.getDownloadUrl(document.id);
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = document.fileName;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      showToast("Downloading File", { message: `${document.fileName} download started.`, variant: "success" });
+    } catch (error) {
+      showToast("Download Unavailable", {
+        message: error instanceof Error ? error.message : "Unable to generate document download URL.",
+        variant: "error",
+      });
     }
   };
 
   const handleReject = () => {
+    if (!currentScanback) return;
+    const comments = rejectNote.trim() || "Rejected by admin. Please review and upload a corrected scanback.";
+    void documentsApi.updateStatusDetail(currentScanback.id, "Rejected", comments).then((updatedDocument) => {
+      setDocuments((prev) =>
+        prev.map((document) => (document.id === currentScanback.id ? updatedDocument : document)),
+      );
+    });
     void ordersApi.updateStatus(id, "Rejected").then((updatedOrder) => {
       setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
     });
-    setLocalLogs((prev) => [
+    setActivityLogs((prev) => [
       { title: "Scanback Rejected by Admin", date: "Just now", tone: "red" },
       ...prev,
     ]);
     setShowRejectModal(false);
+    setRejectNote("");
     showToast("Scanback Rejected", { message: "The scanback document was marked as rejected.", variant: "error" });
   };
 
   const handleApprove = () => {
+    if (!currentScanback) return;
+    void documentsApi.updateStatusDetail(currentScanback.id, "Approved").then((updatedDocument) => {
+      setDocuments((prev) =>
+        prev.map((document) => (document.id === currentScanback.id ? updatedDocument : document)),
+      );
+    });
     void ordersApi.updateStatus(id, "Approved").then((updatedOrder) => {
       setOrders((prev: any) => prev.map((o: any) => (o[0] === id ? updatedOrder : o)));
     });
-    setLocalLogs((prev) => [
+    setActivityLogs((prev) => [
       { title: "Scanback Approved by Admin", date: "Just now", tone: "green" },
       ...prev,
     ]);
@@ -142,6 +243,8 @@ export function OrderDetailsPage({
         id="file-upload-input"
         type="file"
         className="hidden"
+        accept=".pdf,application/pdf"
+        disabled={isUploadingDocument}
         onChange={handleFileChange}
       />
       <div className="flex items-start justify-between">
@@ -249,24 +352,59 @@ export function OrderDetailsPage({
             <div className="mb-4 flex items-center justify-between">
               <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Title Documents</div>
               <button
+                type="button"
                 onClick={() => document.getElementById("file-upload-input")?.click()}
-                className="text-[12px] font-semibold text-brand-500 hover:text-brand-600 transition focus:outline-none"
+                disabled={isUploadingDocument}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12px] font-bold text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-white disabled:shadow-none focus:outline-none"
               >
-                Add Documents
+                {isUploadingDocument ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {isUploadingDocument ? "Uploading..." : "Upload Document"}
               </button>
             </div>
             <div className="space-y-4">
-              {localDocs.map(({ name, meta }) => (
+              {isLoadingDocuments ? (
+                <div className="rounded-xl border border-dashed border-[#DCE5F2] bg-slate-50 px-4 py-5 text-center text-[13px] font-semibold text-slate-500">
+                  Loading title documents...
+                </div>
+              ) : documentError ? (
+                <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-5 text-center text-[13px] font-semibold text-red-600">
+                  {documentError}
+                </div>
+              ) : titleDocuments.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#DCE5F2] bg-slate-50 px-4 py-5 text-center text-[13px] font-semibold text-slate-500">
+                  No title-company documents uploaded for this order yet.
+                </div>
+              ) : titleDocuments.map((document) => (
                 <div
-                  key={name}
-                  className="flex items-center gap-4 rounded-xl border border-[#F0F3F8] px-3 py-3 bg-white hover:border-slate-300 transition"
+                  key={document.id}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-[#F0F3F8] px-3 py-3 bg-white hover:border-slate-300 transition"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF0EF] text-[#EB5B53]">
-                    <FileText size={18} />
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF0EF] text-[#EB5B53]">
+                      <FileText size={18} />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-800 text-[14px]">{document.fileName}</div>
+                      <div className="text-[13px] text-slate-500 mt-0.5">
+                        {document.size} • Uploaded {document.uploadDate} by {document.uploadedBy}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-slate-800 text-[14px]">{name}</div>
-                    <div className="text-[13px] text-slate-500 mt-0.5">{meta}</div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openPreview(document)}
+                      className="flex items-center gap-1.5 rounded-lg border border-[#c3daf9] bg-white px-3 py-1.5 text-[12px] font-bold text-brand-500 shadow-sm hover:bg-[#EEF5FF] hover:border-brand-500 transition focus:outline-none"
+                    >
+                      <Eye size={14} />
+                      Preview
+                    </button>
+                    <button
+                      onClick={() => downloadDocument(document)}
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-650 shadow-sm hover:bg-slate-50 transition focus:outline-none"
+                    >
+                      <Download size={14} />
+                      Download
+                    </button>
                   </div>
                 </div>
               ))}
@@ -278,34 +416,29 @@ export function OrderDetailsPage({
           <SectionCard className="p-4">
             <div className="mb-5 flex items-center justify-between">
               <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Notary Scanbacks</div>
-              <span className="rounded-full bg-[#EEF5FF] px-2 py-1 text-[10px] font-semibold text-brand-500">1 New</span>
+              <span className="rounded-full bg-[#EEF5FF] px-2 py-1 text-[10px] font-semibold text-brand-500">
+                {reviewableScanbackDocuments.length} File{reviewableScanbackDocuments.length === 1 ? "" : "s"}
+              </span>
             </div>
+            {currentScanback ? (
             <div className="rounded-xl border border-line bg-[#F8FAFD] p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#EB5B53] shadow-sm border border-slate-100">
                   <FileText size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-800 text-[14px] truncate">Scanback_V1.pdf</div>
-                  <div className="text-[13px] text-slate-500 font-medium mt-0.5">Uploaded on {date}</div>
+                  <div className="font-semibold text-slate-800 text-[14px] truncate">{currentScanback.fileName}</div>
+                  <div className="text-[13px] text-slate-500 font-medium mt-0.5">Uploaded on {currentScanback.uploadDate}</div>
                   <div className="mt-2.5 flex items-center gap-2">
                     <button
-                      onClick={() => setShowPreviewModal(true)}
+                      onClick={() => openPreview(currentScanback)}
                       className="flex items-center gap-1.5 rounded-lg border border-[#c3daf9] bg-white px-3 py-1.5 text-[12px] font-bold text-brand-500 shadow-sm hover:bg-[#EEF5FF] hover:border-brand-500 transition focus:outline-none"
                     >
                       <Eye size={14} className="text-brand-500" />
                       Preview
                     </button>
                     <button
-                      onClick={() => {
-                        const link = document.createElement("a");
-                        link.href = "/sample.pdf";
-                        link.download = "Scanback_V1.pdf";
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        showToast("Downloading File", { message: "Scanback_V1.pdf download started.", variant: "success" });
-                      }}
+                      onClick={() => downloadDocument(currentScanback)}
                       className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-650 shadow-sm hover:bg-slate-50 transition focus:outline-none"
                     >
                       <Download size={14} className="text-slate-550 text-slate-500" />
@@ -317,22 +450,90 @@ export function OrderDetailsPage({
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setShowRejectModal(true)}
-                  className="rounded-lg border border-[#EA8D8C] py-3 text-[14px] font-semibold text-[#D94A45] hover:bg-rose-50 transition focus:outline-none"
+                  disabled={isCurrentScanbackApproved}
+                  className={`rounded-lg border py-3 text-[14px] font-semibold transition focus:outline-none ${
+                    isCurrentScanbackApproved
+                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                      : "border-[#EA8D8C] text-[#D94A45] hover:bg-rose-50"
+                  }`}
                 >
-                  Reject
+                  {isCurrentScanbackApproved ? "Reviewed" : "Reject"}
                 </button>
                 <button
                   onClick={handleApprove}
-                  className="rounded-lg bg-[#1EA94B] py-3 text-[14px] font-semibold text-white hover:bg-emerald-600 transition focus:outline-none"
+                  disabled={isCurrentScanbackApproved}
+                  className={`rounded-lg py-3 text-[14px] font-semibold text-white transition focus:outline-none ${
+                    isCurrentScanbackApproved
+                      ? "cursor-default bg-[#15803d]"
+                      : "bg-[#1EA94B] hover:bg-emerald-600"
+                  }`}
                 >
-                  Approve
+                  {isCurrentScanbackApproved ? "Approved" : "Approve"}
                 </button>
               </div>
             </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-[#DCE5F2] bg-slate-50 px-4 py-8 text-center text-[13px] font-semibold text-slate-500">
+                No pending notary scanbacks to review.
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard className="p-4">
+            <div className="mb-5 flex items-center justify-between">
+              <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Approved Notary Scanbacks</div>
+              <span className="rounded-full bg-[#edf9f2] px-2 py-1 text-[10px] font-semibold text-[#229b58]">
+                {approvedScanbackDocuments.length} File{approvedScanbackDocuments.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            {approvedScanbackDocuments.length > 0 ? (
+              <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                {approvedScanbackDocuments.map((document) => (
+                  <div key={document.id} className="rounded-xl border border-[#d9efe1] bg-[#f7fcf9] p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-[#EB5B53] shadow-sm border border-[#dcefe3]">
+                        <FileText size={18} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="truncate font-semibold text-slate-800 text-[14px]">{document.fileName}</div>
+                          <span className="rounded-full bg-[#dff5e7] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#1f8e4d]">
+                            Approved
+                          </span>
+                        </div>
+                        <div className="mt-1 text-[13px] text-slate-500 font-medium">
+                          {document.size} • Uploaded on {document.uploadDate}
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            onClick={() => openPreview(document)}
+                            className="flex items-center gap-1.5 rounded-lg border border-[#c3daf9] bg-white px-3 py-1.5 text-[12px] font-bold text-brand-500 shadow-sm hover:bg-[#EEF5FF] hover:border-brand-500 transition focus:outline-none"
+                          >
+                            <Eye size={14} className="text-brand-500" />
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => downloadDocument(document)}
+                            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-650 shadow-sm hover:bg-slate-50 transition focus:outline-none"
+                          >
+                            <Download size={14} className="text-slate-550 text-slate-500" />
+                            Download
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-[#DCE5F2] bg-slate-50 px-4 py-8 text-center text-[13px] font-semibold text-slate-500">
+                No approved notary scanbacks yet.
+              </div>
+            )}
           </SectionCard>
           <ActivityLog
             title="Activity Log"
-            items={localLogs}
+            items={activityLogs}
             footer="View Full Audit Trail"
             onFooterClick={() => setShowAuditTrailModal(true)}
           />
@@ -351,6 +552,17 @@ export function OrderDetailsPage({
                 <X size={20} />
               </button>
             </div>
+
+            <label className="mt-5 block">
+              <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">Short Note for Notary</span>
+              <textarea
+                value={rejectNote}
+                onChange={(event) => setRejectNote(event.target.value)}
+                rows={4}
+                className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[14px] text-slate-700 outline-none transition focus:border-brand-400 focus:bg-white"
+                placeholder="Example: Missing borrower initials on page 4. Please upload a corrected scanback."
+              />
+            </label>
 
             <div className="mt-7 flex items-center justify-end gap-3">
               <button
@@ -380,7 +592,9 @@ export function OrderDetailsPage({
                   <FileText className="h-5 w-5" />
                 </div>
                 <div className="text-left">
-                  <div className="text-[18px] font-black text-white tracking-tight leading-none">Scanback_V1.pdf</div>
+                  <div className="text-[18px] font-black text-white tracking-tight leading-none">
+                    {previewDocument?.fileName || "Document Preview"}
+                  </div>
                   <div className="mt-1 text-[10px] font-bold text-brand-400 uppercase tracking-[0.2em]">High-Fidelity Document Inspection</div>
                 </div>
               </div>
@@ -393,9 +607,17 @@ export function OrderDetailsPage({
             </div>
 
             <div className="flex-1 bg-[#1e293b] p-8 flex justify-center items-center overflow-auto">
-              <div className="w-[390px] h-[520px] rounded-lg border border-slate-700/50 bg-white shadow-2xl overflow-hidden shrink-0">
-                <DocumentMockPreview fileName="Scanback_V1.pdf" />
-              </div>
+              {previewUrl ? (
+                <iframe
+                  title={previewDocument?.fileName || "Document preview"}
+                  src={previewUrl}
+                  className="h-full min-h-[620px] w-full rounded-lg border border-slate-700/50 bg-white shadow-2xl"
+                />
+              ) : (
+                <div className="flex h-[360px] w-full max-w-[520px] items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-900 text-center text-[14px] font-semibold text-slate-300">
+                  Generating secure document preview...
+                </div>
+              )}
             </div>
           </div>
         </div>,
@@ -421,7 +643,7 @@ export function OrderDetailsPage({
             </div>
 
             <div className="max-h-[380px] overflow-y-auto pr-1 space-y-4 my-6">
-              {localLogs.map((log, index) => {
+              {activityLogs.map((log, index) => {
                 return (
                   <div key={`${log.title}-${index}`} className="rounded-xl border border-slate-100 bg-[#F9FBFE] p-4 text-left">
                     <div className="flex items-start justify-between">

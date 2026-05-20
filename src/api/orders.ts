@@ -9,8 +9,23 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-export type OrderStatus = "Received" | "Assigned" | "Under Review" | "Approved" | "Completed" | "Rejected";
+export type OrderStatus =
+  | "Received"
+  | "Assigned"
+  | "In Progress"
+  | "Under Review"
+  | "Approved"
+  | "Completed"
+  | "Rejected"
+  | "Pending Upload"
+  | "Submitted";
 export type OrderRow = [string, string, string, string, string, string, OrderStatus, "none" | "jane" | "mark"];
+
+export interface OrderTimelineEvent {
+  title: string;
+  date: string;
+  tone: "blue" | "slate" | "green" | "red";
+}
 
 export interface CreateOrderPayload {
   titleCompany: string;
@@ -19,7 +34,7 @@ export interface CreateOrderPayload {
   signerPhone?: string;
   signingDate: string;
   signingTime: string;
-  status: "Received" | "Assigned" | "Under Review";
+  status: "Received" | "Assigned" | "In Progress" | "Under Review" | "Pending Upload" | "Submitted";
   priority: "Standard" | "Rush" | "High Touch";
   notaryPreference: "First available" | "Verified only" | "Manual assignment";
   instructions?: string;
@@ -53,6 +68,10 @@ export const ordersApi = {
     return request<OrderRow[]>("/orders");
   },
 
+  getTimeline(id: string): Promise<OrderTimelineEvent[]> {
+    return request<OrderTimelineEvent[]>(`${orderPath(id)}/timeline`);
+  },
+
   createOrder(payload: CreateOrderPayload): Promise<OrderRow> {
     return request<OrderRow>("/orders", {
       method: "POST",
@@ -71,10 +90,10 @@ export const ordersApi = {
     });
   },
 
-  assignNotary(id: string, notaryName: string): Promise<OrderRow> {
+  assignNotary(id: string, payload: { notaryName: string; notaryId?: string; notaryEmail?: string }): Promise<OrderRow> {
     return request<OrderRow>(`${orderPath(id)}/assign-notary`, {
       method: "PATCH",
-      body: JSON.stringify({ notaryName }),
+      body: JSON.stringify(payload),
     });
   },
 };

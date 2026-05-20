@@ -32,6 +32,8 @@ export type StatusKey =
   | "Received"
   | "Completed"
   | "In Progress"
+  | "Submitted"
+  | "Pending Upload"
   | "Verified"
   | "Pending Review"
   | "Under Review";
