@@ -6,6 +6,7 @@ export * from "./CompanyDetailsPage";
 export * from "./NotaryProfilePage";
 export * from "./OrdersPage";
 export * from "./OrderDetailsPage";
+export * from "./CommunicationsPage";
 export * from "./DocumentsPage";
 export * from "./DocumentViewPage";
 export * from "./AnalyticsPage";

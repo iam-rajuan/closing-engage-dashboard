@@ -91,6 +91,10 @@ export const communicationsApi = {
     return request<CommunicationThread[]>("/communications/threads");
   },
 
+  getOrderThread(orderNumber: string): Promise<CommunicationThread> {
+    return request<CommunicationThread>(orderChatPath(orderNumber, "/thread"));
+  },
+
   getOrderMessages(orderNumber: string): Promise<CommunicationConversation> {
     return request<CommunicationConversation>(orderChatPath(orderNumber, "/messages"));
   },

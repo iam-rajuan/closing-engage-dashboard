@@ -9,6 +9,7 @@ export type PageKey =
   | "notaryProfile"
   | "orders"
   | "orderDetails"
+  | "communications"
   | "documents"
   | "documentView"
   | "analytics"
@@ -16,7 +17,7 @@ export type PageKey =
   | "notifications";
 
 export type NavItem = {
-  key: "dashboard" | "usersCompanies" | "orders" | "documents" | "analytics" | "settings";
+  key: "dashboard" | "usersCompanies" | "orders" | "communications" | "documents" | "analytics" | "settings";
   label: string;
   icon: LucideIcon;
 };

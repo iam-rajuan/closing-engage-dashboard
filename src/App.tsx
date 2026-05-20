@@ -24,6 +24,7 @@ import {
   NotaryProfilePage,
   OrdersPage,
   OrderDetailsPage,
+  CommunicationsPage,
   DocumentsPage,
   DocumentViewPage,
   AnalyticsPage,
@@ -468,6 +469,15 @@ export default function App() {
                     orderId={selectedOrderId}
                     onBack={() => setPage(orderDetailsBackPage)}
                     onAssign={() => setAssignModalOpen(true)}
+                  />
+                )}
+                {page === "communications" && (
+                  <CommunicationsPage
+                    onOpenOrder={(orderId) => {
+                      setSelectedOrderId(orderId);
+                      setOrderDetailsBackPage("communications");
+                      setPage("orderDetails");
+                    }}
                   />
                 )}
                 {page === "documents" && (

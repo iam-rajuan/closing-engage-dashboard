@@ -9,7 +9,7 @@ export function Sidebar({
   onClose,
 }: {
   activeKey: string;
-  onSelect: (key: "dashboard" | "usersCompanies" | "orders" | "documents" | "analytics" | "settings") => void;
+  onSelect: (key: "dashboard" | "usersCompanies" | "orders" | "communications" | "documents" | "analytics" | "settings") => void;
   isOpen: boolean;
   onClose: () => void;
 }) {
