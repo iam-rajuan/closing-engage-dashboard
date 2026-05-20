@@ -22,21 +22,46 @@ import { useToast } from "../components/Toast";
 import type { StatusKey } from "../types";
 import { Modal } from "../components/modals/Modal";
 import { DocumentMockPreview } from "../components/DocumentMockPreview";
-import { documentsApi } from "../api/documents";
+import { documentsApi, type DocumentTableRow } from "../api/documents";
 
 export function DocumentViewPage({ document, onBack }: { document: any; onBack: () => void }) {
   const { documents: documentRows, setDocuments } = useAppContext();
   const { showToast } = useToast();
 
-  // Find the live state of this document in our context to remain reactive
-  const liveDoc = documentRows.find((d: any) => d[0] === (document?.[0] || "Closing_Disclosure_Final.pdf")) || document;
-  const fileName = liveDoc ? liveDoc[0] : "Closing_Disclosure_Final.pdf";
-  const orderId = liveDoc ? liveDoc[1] : "#ORD-882190";
-  const uploadedBy = liveDoc ? liveDoc[2] : "Northway Holdings";
-  const date = liveDoc ? liveDoc[3] : "Oct 24, 2023";
-  const size = liveDoc ? liveDoc[4] : "1.2 MB";
-  const status = liveDoc ? liveDoc[5] : "Pending";
-  const documentId = liveDoc ? liveDoc[6] : undefined;
+  const liveDoc =
+    documentRows.find((d: DocumentTableRow) => d[6] === document?.[6]) ||
+    documentRows.find((d: DocumentTableRow) => d[0] === document?.[0] && d[1] === document?.[1]) ||
+    document ||
+    null;
+
+  if (!liveDoc) {
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center gap-2 text-[12px] text-slate-500 font-semibold tracking-wide">
+          <button onClick={onBack} className="hover:text-brand-500 transition">
+            Documents
+          </button>
+          <span>&nbsp;›&nbsp;</span>
+          <span className="text-slate-700">Unavailable</span>
+        </div>
+
+        <SectionCard className="p-8">
+          <div className="text-[20px] font-bold text-slate-900">Document unavailable</div>
+          <p className="mt-2 max-w-[520px] text-[14px] text-slate-500">
+            This document is no longer available in the current backend dataset. It may have been deleted or the page was reloaded without an active document selection.
+          </p>
+          <button
+            onClick={onBack}
+            className="mt-5 rounded-lg bg-brand-500 px-5 py-3 text-[14px] font-semibold text-white hover:bg-brand-600 transition"
+          >
+            Back to Documents
+          </button>
+        </SectionCard>
+      </div>
+    );
+  }
+
+  const [fileName, orderId, uploadedBy, date, size, status, documentId] = liveDoc as DocumentTableRow;
 
   // Reactive micro-states
   const [zoom, setZoom] = useState(100);
@@ -62,10 +87,10 @@ export function DocumentViewPage({ document, onBack }: { document: any; onBack: 
 
   const handleApprove = async () => {
     try {
-      const updatedRow = documentId ? await documentsApi.updateStatus(documentId, "Approved") : null;
+      const updatedRow = await documentsApi.updateStatus(documentId, "Approved");
       setDocuments((prev: any) =>
         prev.map((d: any) =>
-          d[0] === fileName ? updatedRow || [d[0], d[1], d[2], d[3], d[4], "Approved"] : d
+          d[6] === documentId ? updatedRow : d
         )
       );
       showToast(`Document "${fileName}" approved successfully!`, { variant: "success" });
@@ -76,10 +101,10 @@ export function DocumentViewPage({ document, onBack }: { document: any; onBack: 
 
   const handleReject = async () => {
     try {
-      const updatedRow = documentId ? await documentsApi.updateStatus(documentId, "Rejected") : null;
+      const updatedRow = await documentsApi.updateStatus(documentId, "Rejected");
       setDocuments((prev: any) =>
         prev.map((d: any) =>
-          d[0] === fileName ? updatedRow || [d[0], d[1], d[2], d[3], d[4], "Rejected"] : d
+          d[6] === documentId ? updatedRow : d
         )
       );
       showToast(`Document "${fileName}" rejected and changes requested.`, { variant: "error" });
@@ -91,7 +116,7 @@ export function DocumentViewPage({ document, onBack }: { document: any; onBack: 
   const handleDownload = async () => {
     showToast(`Downloading "${fileName}"...`, { variant: "info" });
     try {
-      const url = documentId ? await documentsApi.getDownloadUrl(documentId) : "/sample.pdf";
+      const url = await documentsApi.getDownloadUrl(documentId);
       const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -106,14 +131,7 @@ export function DocumentViewPage({ document, onBack }: { document: any; onBack: 
       
       showToast(`File "${fileName}" downloaded successfully!`, { variant: "success" });
     } catch (error) {
-      console.error("Download failed:", error);
-      // Fallback
-      const link = document.createElement("a");
-      link.href = "/sample.pdf";
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      showToast(error instanceof Error ? error.message : "Document download failed", { variant: "error" });
     }
   };
 

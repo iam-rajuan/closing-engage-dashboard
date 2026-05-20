@@ -438,22 +438,6 @@ export const orderRows = [
   ["#ORD-87890", "Summit Title", "ST", "Sarah Harrison", "99 Summit Dr\nPhoenix, AZ", "Sep 18,\n2023", "Completed", "jane"],
 ] as const;
 
-export const documentRows = [
-  ["Closing_Disclosure_Final.pdf", "#ORD-882190", "TITLE COMPANY", "Oct 24, 2023", "1.2 MB", "Approved"],
-  ["Wire_Instructions_A-B.pdf", "#ORD-991022", "NOTARY", "Oct 23, 2023", "450 KB", "Pending"],
-  ["Insurance_Binder_Proof.pdf", "#ORD-771234", "BUYER", "Oct 22, 2023", "2.4 MB", "Rejected"],
-  ["Title_Search_Report.pdf", "#ORD-881552", "TITLE COMPANY", "Oct 20, 2023", "3.1 MB", "Approved"],
-  ["Seller_Net_Sheet_Draft.pdf", "#ORD-881552", "TITLE COMPANY", "Oct 19, 2023", "850 KB", "Approved"],
-  ["Buyer_Statement_Final.pdf", "#ORD-771234", "BUYER", "Oct 18, 2023", "1.5 MB", "Pending"],
-  ["Notary_Signing_Act.pdf", "#ORD-991022", "NOTARY", "Oct 17, 2023", "920 KB", "Approved"],
-  ["Tax_Proration_Calcs.xlsx", "#ORD-882190", "TITLE COMPANY", "Oct 16, 2023", "140 KB", "Approved"],
-  ["Hazard_Insurance_Policy.pdf", "#ORD-771234", "BUYER", "Oct 15, 2023", "4.2 MB", "Approved"],
-  ["Closing_Instructions_V1.pdf", "#ORD-882190", "TITLE COMPANY", "Oct 14, 2023", "1.8 MB", "Approved"],
-  ["Warranty_Deed_Signed.pdf", "#ORD-882190", "TITLE COMPANY", "Oct 12, 2023", "2.1 MB", "Approved"],
-  ["Title_Commitment_Prelim.pdf", "#ORD-881552", "TITLE COMPANY", "Oct 10, 2023", "3.4 MB", "Approved"],
-  ["HOA_Estoppel_Letter.pdf", "#ORD-771234", "BUYER", "Oct 08, 2023", "620 KB", "Approved"]
-] as const;
-
 export const quickActions = [
   { title: "Add User", description: "Create new internal or partner accounts", icon: UserCog, tone: "blue" },
   { title: "Assign Orders", description: "Route pending files to available notaries", icon: ClipboardList, tone: "slate" },

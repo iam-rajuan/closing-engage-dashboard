@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import {
-  documentRows as initialDocumentRows,
   orderRows as initialOrderRows,
   pageGroups,
   initialRegistrationRequests,
@@ -192,7 +191,7 @@ export default function App() {
   const [editingNotary, setEditingNotary] = useState<NotaryUser | null>(null);
   const [prefillRequest, setPrefillRequest] = useState<any | null>(null);
   const [orders, setOrders] = useState<any[]>([...initialOrderRows]);
-  const [documents, setDocuments] = useState<any[]>([...initialDocumentRows]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   
   const [registrationRequests, setRegistrationRequests] = useState<any[]>(() => {

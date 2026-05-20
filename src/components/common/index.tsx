@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Bell,
@@ -428,8 +428,25 @@ export function DropdownField({
   widthClass?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
+
   return (
-    <div className={`relative ${widthClass}`}>
+    <div ref={containerRef} className={`relative ${widthClass}`}>
       <button
         onClick={() => setOpen(!open)}
         className="flex h-11 w-full items-center justify-between gap-3 rounded-[12px] border border-[#e2e8f3] bg-white px-4 text-[14px] font-semibold text-slate-700 transition hover:border-brand-300 hover:bg-slate-50"

@@ -19,30 +19,51 @@ interface DashboardState {
   error: string | null;
 }
 
+const initialDashboardState: DashboardState = {
+  metrics: [],
+  chartData: [],
+  notifications: [],
+  isLoading: true,
+  isChartLoading: false,
+  error: null,
+};
+
+let sharedDashboardState: DashboardState = initialDashboardState;
+const dashboardListeners = new Set<(state: DashboardState) => void>();
+
+const updateSharedDashboardState = (
+  updater: DashboardState | ((prev: DashboardState) => DashboardState)
+) => {
+  sharedDashboardState =
+    typeof updater === "function" ? (updater as (prev: DashboardState) => DashboardState)(sharedDashboardState) : updater;
+
+  dashboardListeners.forEach((listener) => listener(sharedDashboardState));
+};
+
 export function useDashboardData() {
-  const [state, setState] = useState<DashboardState>({
-    metrics: [],
-    chartData: [],
-    notifications: [],
-    isLoading: true,
-    isChartLoading: false,
-    error: null,
-  });
+  const [state, setState] = useState<DashboardState>(sharedDashboardState);
 
   const [chartPeriod, setChartPeriod] = useState<"7d" | "30d" | "90d">("30d");
 
+  useEffect(() => {
+    dashboardListeners.add(setState);
+    return () => {
+      dashboardListeners.delete(setState);
+    };
+  }, []);
+
   // Fetch all initial data once on mount
   const fetchAll = useCallback(async () => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    updateSharedDashboardState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
       const [metrics, chartData, notifications] = await Promise.all([
         fetchDashboardMetrics(),
         fetchActiveUsersTrend(chartPeriod),
         fetchNotifications(),
       ]);
-      setState({ metrics, chartData, notifications, isLoading: false, isChartLoading: false, error: null });
+      updateSharedDashboardState({ metrics, chartData, notifications, isLoading: false, isChartLoading: false, error: null });
     } catch (err) {
-      setState((prev) => ({
+      updateSharedDashboardState((prev) => ({
         ...prev,
         isLoading: false,
         error: err instanceof Error ? err.message : "Failed to load dashboard data",
@@ -62,15 +83,15 @@ export function useDashboardData() {
     if (state.isLoading) return;
 
     const updateChart = async () => {
-      setState((prev) => ({ ...prev, isChartLoading: true }));
+      updateSharedDashboardState((prev) => ({ ...prev, isChartLoading: true }));
       try {
         const chartData = await fetchActiveUsersTrend(chartPeriod);
         if (active) {
-          setState((prev) => ({ ...prev, chartData, isChartLoading: false }));
+          updateSharedDashboardState((prev) => ({ ...prev, chartData, isChartLoading: false }));
         }
       } catch {
         if (active) {
-          setState((prev) => ({ ...prev, isChartLoading: false }));
+          updateSharedDashboardState((prev) => ({ ...prev, isChartLoading: false }));
         }
       }
     };
@@ -84,7 +105,7 @@ export function useDashboardData() {
 
   const handleMarkRead = async (id: string) => {
     await markNotificationRead(id);
-    setState((prev) => ({
+    updateSharedDashboardState((prev) => ({
       ...prev,
       notifications: prev.notifications.map((n) =>
         n.id === id ? { ...n, read: true } : n
@@ -94,7 +115,7 @@ export function useDashboardData() {
 
   const handleMarkAllRead = async () => {
     await markAllNotificationsRead();
-    setState((prev) => ({
+    updateSharedDashboardState((prev) => ({
       ...prev,
       notifications: prev.notifications.map((n) => ({ ...n, read: true })),
     }));

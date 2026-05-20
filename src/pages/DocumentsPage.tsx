@@ -1,57 +1,129 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, Calendar } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 import { PageHeader, DropdownField, SimpleStatCard } from "../components/common";
 import { DocumentTable } from "../components/tables";
 import { useToast } from "../components/Toast";
-import { documentsApi } from "../api/documents";
+import { documentsApi, type DocumentTableRow } from "../api/documents";
+
+const parseDocumentDate = (value?: string) => {
+  if (!value) {
+    return 0;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const getDocumentSortTime = (row: DocumentTableRow) => parseDocumentDate(row[8]) || parseDocumentDate(row[3]);
+
+const getUploaderCategory = (row: DocumentTableRow) => {
+  const role = row[7];
+
+  if (role === "admin") return "Admin";
+  if (role === "notary") return "Notary";
+  if (role === "company" || role === "title-company") return "Company";
+
+  const uploadedBy = row[2].toUpperCase();
+
+  if (uploadedBy.includes("ADMIN")) return "Admin";
+  if (uploadedBy.includes("NOTARY")) return "Notary";
+  return "Company";
+};
+
+const isWithinDateRange = (value: string, filter: string) => {
+  const timestamp = parseDocumentDate(value);
+
+  if (!timestamp || filter === "All") {
+    return true;
+  }
+
+  const now = new Date();
+  const currentTime = now.getTime();
+  const sevenDaysAgo = currentTime - 7 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAgo = currentTime - 30 * 24 * 60 * 60 * 1000;
+
+  if (filter === "Last 7 Days") {
+    return timestamp >= sevenDaysAgo;
+  }
+
+  if (filter === "Last 30 Days") {
+    return timestamp >= thirtyDaysAgo;
+  }
+
+  if (filter === "This Month") {
+    const documentDate = new Date(timestamp);
+    return (
+      documentDate.getFullYear() === now.getFullYear() &&
+      documentDate.getMonth() === now.getMonth()
+    );
+  }
+
+  return true;
+};
 
 export function DocumentsPage({ onOpenDocument }: { onOpenDocument: (doc: any) => void }) {
   const { documents: documentRows, setDocuments, showConfirm } = useAppContext();
   const [searchQuery, setSearchQuery] = useState("");
-  const [fileTypeFilter, setFileTypeFilter] = useState("File Type: All");
-  const [uploadedByFilter, setUploadedByFilter] = useState("Uploaded By: All");
-  const [statusFilter, setStatusFilter] = useState("Status: All");
-  const [dateRangeFilter, setDateRangeFilter] = useState("Date Range: All");
+  const [fileTypeFilter, setFileTypeFilter] = useState("All");
+  const [uploadedByFilter, setUploadedByFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [dateRangeFilter, setDateRangeFilter] = useState("All");
+  const [sortFilter, setSortFilter] = useState("Newest");
   const { showToast } = useToast();
 
-  const filteredDocuments = documentRows.filter(([fileName, orderId, uploadedBy, , , status]) => {
-    const matchesSearch = `${fileName} ${orderId}`.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // File Type parsing from file extension
-    const extension = fileName.split('.').pop()?.toUpperCase() || "";
-    const cleanFileType = fileTypeFilter.replace("File Type: ", "");
-    const matchesFileType = cleanFileType === "All" ? true : extension === cleanFileType;
+  const fileTypeOptions = useMemo(() => {
+    const extensions = Array.from(
+      new Set(
+        documentRows
+          .map((row: DocumentTableRow) => row[0].split(".").pop()?.toUpperCase())
+          .filter((value): value is string => Boolean(value))
+      )
+    ).sort();
 
-    // Uploaded By filter
-    const cleanUploadedBy = uploadedByFilter.replace("Uploaded By: ", "");
-    const matchesUploadedBy = cleanUploadedBy === "All" ? true : uploadedBy === cleanUploadedBy;
+    return ["All", ...extensions];
+  }, [documentRows]);
 
-    // Status filter - matching dropdown value "Pending Review" with data value "Pending"
-    const cleanStatus = statusFilter.replace("Status: ", "");
-    const matchesStatus =
-      cleanStatus === "All"
-        ? true
-        : cleanStatus === "Pending Review"
-        ? status === "Pending"
-        : status === cleanStatus;
+  const uploadedByOptions = ["All", "Admin", "Company", "Notary"];
 
-    return matchesSearch && matchesFileType && matchesUploadedBy && matchesStatus;
-  });
+  const filteredDocuments = useMemo(() => {
+    const rows = documentRows.filter((row: DocumentTableRow) => {
+      const [fileName, orderId, , uploadDate, , status] = row;
+      const matchesSearch = `${fileName} ${orderId}`.toLowerCase().includes(searchQuery.toLowerCase());
+      const extension = fileName.split(".").pop()?.toUpperCase() || "";
+      const matchesFileType = fileTypeFilter === "All" || extension === fileTypeFilter;
+      const matchesUploadedBy = uploadedByFilter === "All" || getUploaderCategory(row) === uploadedByFilter;
+      const matchesStatus =
+        statusFilter === "All"
+          ? true
+          : statusFilter === "Pending Review"
+            ? status === "Pending"
+            : status === statusFilter;
+      const matchesDateRange = isWithinDateRange(uploadDate, dateRangeFilter);
 
-  const handleDeleteDocument = (fileName: string) => {
-    const targetDocument = documentRows.find((doc: any) => doc[0] === fileName);
-    const documentId = targetDocument?.[6];
+      return matchesSearch && matchesFileType && matchesUploadedBy && matchesStatus && matchesDateRange;
+    });
+
+    return [...rows].sort((a: DocumentTableRow, b: DocumentTableRow) => {
+      const dateDifference = getDocumentSortTime(b) - getDocumentSortTime(a);
+      if (dateDifference !== 0) {
+        return sortFilter === "Oldest" ? -dateDifference : dateDifference;
+      }
+
+      return a[0].localeCompare(b[0]);
+    });
+  }, [dateRangeFilter, documentRows, fileTypeFilter, searchQuery, sortFilter, statusFilter, uploadedByFilter]);
+
+  const handleDeleteDocument = (documentRow: DocumentTableRow) => {
+    const [fileName, , , , , , documentId] = documentRow;
 
     showConfirm(
       "Delete Document?",
       `Are you sure you want to permanently remove ${fileName} from the transaction pipeline? This action cannot be undone.`,
       async () => {
         try {
-          if (documentId) {
-            await documentsApi.deleteDocument(documentId);
-          }
-          setDocuments((prev: any[]) => prev.filter((doc) => doc[0] !== fileName));
+          await documentsApi.deleteDocument(documentId);
+          setDocuments((prev: DocumentTableRow[]) => prev.filter((doc) => doc[6] !== documentId));
           showToast("Document deleted successfully", { variant: "success" });
         } catch (error) {
           showToast(error instanceof Error ? error.message : "Document delete failed", { variant: "error" });
@@ -62,12 +134,12 @@ export function DocumentsPage({ onOpenDocument }: { onOpenDocument: (doc: any) =
     );
   };
 
-  const handleDownloadDocument = async (fileName: string) => {
+  const handleDownloadDocument = async (documentRow: DocumentTableRow) => {
+    const [fileName, , , , , , documentId] = documentRow;
+
     showToast(`Downloading ${fileName}...`, { variant: "info" });
     try {
-      const targetDocument = documentRows.find((doc: any) => doc[0] === fileName);
-      const documentId = targetDocument?.[6];
-      const url = documentId ? await documentsApi.getDownloadUrl(documentId) : "/sample.pdf";
+      const url = await documentsApi.getDownloadUrl(documentId);
       const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -82,21 +154,14 @@ export function DocumentsPage({ onOpenDocument }: { onOpenDocument: (doc: any) =
       
       showToast(`File ${fileName} downloaded successfully!`, { variant: "success" });
     } catch (error) {
-      console.error("Download failed:", error);
-      // Fallback
-      const link = document.createElement("a");
-      link.href = "/sample.pdf";
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      showToast(error instanceof Error ? error.message : "Document download failed", { variant: "error" });
     }
   };
 
   return (
     <div className="space-y-5">
       <PageHeader title="Documents" description="Manage and access all uploaded files within the transaction pipeline." />
-      <div className="grid grid-cols-[1.55fr_repeat(4,0.62fr)] gap-3">
+      <div className="grid grid-cols-[1.45fr_repeat(5,0.58fr)] gap-3">
         <label className="flex h-11 items-center gap-3 rounded-xl bg-white px-4 shadow-sm border border-slate-100 focus-within:ring-1 focus-within:ring-brand-500/20 focus-within:border-transparent transition-all">
           <Search size={16} className="text-slate-400" />
           <input
@@ -107,28 +172,34 @@ export function DocumentsPage({ onOpenDocument }: { onOpenDocument: (doc: any) =
           />
         </label>
         <DropdownField
-          label={fileTypeFilter}
-          options={["File Type: All", "PDF", "JPG", "PNG"]}
-          onSelect={setFileTypeFilter}
+          label={`File Type: ${fileTypeFilter}`}
+          options={fileTypeOptions.map((value) => `File Type: ${value}`)}
+          onSelect={(value) => setFileTypeFilter(value.replace("File Type: ", ""))}
           widthClass="w-full"
         />
         <DropdownField
-          label={uploadedByFilter}
-          options={["Uploaded By: All", "TITLE COMPANY", "NOTARY", "BUYER"]}
-          onSelect={setUploadedByFilter}
+          label={`Uploaded By: ${uploadedByFilter}`}
+          options={uploadedByOptions.map((value) => `Uploaded By: ${value}`)}
+          onSelect={(value) => setUploadedByFilter(value.replace("Uploaded By: ", ""))}
           widthClass="w-full"
         />
         <DropdownField
-          label={statusFilter}
-          options={["Status: All", "Pending Review", "Approved", "Rejected"]}
-          onSelect={setStatusFilter}
+          label={`Status: ${statusFilter}`}
+          options={["All", "Pending Review", "Approved", "Rejected"].map((value) => `Status: ${value}`)}
+          onSelect={(value) => setStatusFilter(value.replace("Status: ", ""))}
           widthClass="w-full"
         />
         <DropdownField
-          label={dateRangeFilter}
-          options={["Date Range: All", "Last 7 Days", "Last 30 Days", "This Month"]}
+          label={dateRangeFilter === "All" ? "Date Range: All" : dateRangeFilter}
+          options={["All", "Last 7 Days", "Last 30 Days", "This Month"]}
           onSelect={setDateRangeFilter}
           icon={<Calendar size={16} className="text-slate-400" />}
+          widthClass="w-full"
+        />
+        <DropdownField
+          label={`Sort: ${sortFilter}`}
+          options={["Newest", "Oldest"].map((value) => `Sort: ${value}`)}
+          onSelect={(value) => setSortFilter(value.replace("Sort: ", ""))}
           widthClass="w-full"
         />
       </div>

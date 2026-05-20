@@ -3,6 +3,7 @@ import { Eye, Pencil, Trash2, MoreVertical, UserPlus, Download, FileText } from 
 import { useAppContext } from "../../context/AppContext";
 import { usersApi } from "../../api/users";
 import { ordersApi } from "../../api/orders";
+import type { DocumentTableRow } from "../../api/documents";
 import { StatusBadge, Pagination, Avatar, SectionCard } from "../common";
 import { profileGradients } from "../../data";
 import type { StatusKey, CompanyUser, NotaryUser } from "../../types";
@@ -390,10 +391,10 @@ export function DocumentTable({
   onDownloadDocument,
   rows,
 }: {
-  onOpenDocument: (row: any) => void;
-  onDeleteDocument: (fileName: string) => void;
-  onDownloadDocument: (fileName: string) => void;
-  rows: any[];
+  onOpenDocument: (row: DocumentTableRow) => void;
+  onDeleteDocument: (row: DocumentTableRow) => void;
+  onDownloadDocument: (row: DocumentTableRow) => void;
+  rows: DocumentTableRow[];
 }) {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -421,15 +422,18 @@ export function DocumentTable({
           </tr>
         </thead>
         <tbody>
-          {paginatedRows.map(([fileName, orderId, uploadedBy, date, size, status]) => (
-            <tr key={fileName} className="border-t border-line bg-white">
+          {paginatedRows.map((row) => {
+            const [fileName, orderId, uploadedBy, date, size, status, documentId] = row;
+
+            return (
+            <tr key={documentId} className="border-t border-line bg-white">
               <td className="px-5 py-4">
                 <div className="flex items-center gap-4">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FFF0EF] text-[#EB5B53]">
                     <FileText size={16} />
                   </div>
                   <button
-                    onClick={() => onOpenDocument([fileName, orderId, uploadedBy, date, size, status])}
+                    onClick={() => onOpenDocument(row)}
                     className="font-semibold text-slate-800 text-left hover:text-brand-500 transition focus:outline-none"
                   >
                     {fileName}
@@ -450,19 +454,19 @@ export function DocumentTable({
               <td className="px-5 py-4">
                 <div className="flex items-center gap-5 text-slate-500">
                   <button
-                    onClick={() => onOpenDocument([fileName, orderId, uploadedBy, date, size, status])}
+                    onClick={() => onOpenDocument(row)}
                     className="hover:text-brand-500 focus:outline-none transition"
                   >
                     <Eye size={16} />
                   </button>
                   <button
-                    onClick={() => onDownloadDocument(fileName)}
+                    onClick={() => onDownloadDocument(row)}
                     className="hover:text-brand-500 focus:outline-none transition"
                   >
                     <Download size={16} />
                   </button>
                   <button
-                    onClick={() => onDeleteDocument(fileName)}
+                    onClick={() => onDeleteDocument(row)}
                     className="hover:text-brand-500 focus:outline-none transition"
                   >
                     <Trash2 size={16} />
@@ -470,7 +474,7 @@ export function DocumentTable({
                 </div>
               </td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
       <Pagination

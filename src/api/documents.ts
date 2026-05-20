@@ -9,7 +9,17 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-export type DocumentTableRow = [string, string, string, string, string, "Pending" | "Approved" | "Rejected", string];
+export type DocumentTableRow = [
+  string,
+  string,
+  string,
+  string,
+  string,
+  "Pending" | "Approved" | "Rejected",
+  string,
+  ("admin" | "company" | "notary" | "buyer" | "title-company")?,
+  string?
+];
 
 export interface DocumentDetail {
   id: string;
@@ -96,6 +106,8 @@ const toTableRow = (document: DocumentDetail): DocumentTableRow => [
   document.size,
   toAdminStatus(document.status),
   document.id,
+  document.uploaderRole,
+  document.uploadedAt,
 ];
 
 const documentPath = (id: string) => `/documents/${encodeURIComponent(id)}`;
