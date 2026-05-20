@@ -1,9 +1,16 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Link2, Calendar, MapPin, FileText, User, X, Eye, Download, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, Link2, Calendar, MapPin, FileText, User, X, Eye, Download, Upload, Loader2, MessageCircle, Send } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 import { ordersApi, type OrderDetail, type OrderStatus } from "../api/orders";
 import { documentsApi, type DocumentDetail } from "../api/documents";
+import {
+  communicationsApi,
+  type CommunicationConversation,
+  type CommunicationMessage,
+  type CommunicationSendResult,
+  type CommunicationSocket,
+} from "../api/communications";
 import {
   StatusBadge,
   GhostButton,
@@ -17,6 +24,15 @@ import { Modal } from "../components/modals/Modal";
 import { useToast } from "../components/Toast";
 import { stepItems } from "../data";
 import type { StatusKey } from "../types";
+
+interface SocketAck<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+
+const mergeMessage = (messages: CommunicationMessage[], next: CommunicationMessage) =>
+  messages.some((message) => message.id === next.id) ? messages : [...messages, next];
 
 export function OrderDetailsPage({
   orderId,
@@ -44,6 +60,12 @@ export function OrderDetailsPage({
   const [rejectNote, setRejectNote] = useState("");
   const [selectedScanback, setSelectedScanback] = useState<DocumentDetail | null>(null);
   const [isUpdatingScanbackId, setIsUpdatingScanbackId] = useState<string | null>(null);
+  const [chatConversation, setChatConversation] = useState<CommunicationConversation | null>(null);
+  const [chatDraft, setChatDraft] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isChatSending, setIsChatSending] = useState(false);
+  const chatSocketRef = useRef<CommunicationSocket | null>(null);
+  const chatMessagesRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -89,6 +111,61 @@ export function OrderDetailsPage({
   const scanbackDocumentIds = new Set(allScanbackDocuments.map((document) => document.id));
   const titleDocuments = documents.filter((document) => !scanbackDocumentIds.has(document.id));
   const scanbackDocuments = reviewableScanbackDocuments;
+
+  useEffect(() => {
+    let isMounted = true;
+    setChatConversation(null);
+    setChatDraft("");
+
+    if (!id) return;
+
+    setIsChatLoading(true);
+    communicationsApi
+      .getOrderMessages(id)
+      .then((conversation) => {
+        if (!isMounted) return;
+        setChatConversation(conversation);
+
+        const socket = communicationsApi.createSocket();
+        chatSocketRef.current = socket;
+        if (!socket) return;
+
+        socket.emit("communications:join-order", id, (ack: SocketAck<CommunicationConversation>) => {
+          if (ack.success && ack.data && isMounted) setChatConversation(ack.data);
+        });
+        socket.on("communications:message", (payload: CommunicationSendResult) => {
+          if (!isMounted || payload.thread.orderNumber !== id) return;
+          setChatConversation((current) =>
+            current
+              ? { thread: payload.thread, messages: mergeMessage(current.messages, payload.message) }
+              : { thread: payload.thread, messages: [payload.message] },
+          );
+        });
+      })
+      .catch((error) => {
+        if (isMounted) {
+          showToast("Chat Unavailable", {
+            message: error instanceof Error ? error.message : "Unable to load order chat.",
+            variant: "error",
+          });
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsChatLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      chatSocketRef.current?.disconnect();
+      chatSocketRef.current = null;
+    };
+  }, [id, showToast]);
+
+  useEffect(() => {
+    const chatMessages = chatMessagesRef.current;
+    if (!chatMessages) return;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }, [chatConversation?.messages.length]);
 
   useEffect(() => {
     let isMounted = true;
@@ -270,6 +347,45 @@ export function OrderDetailsPage({
         });
       })
       .finally(() => setIsUpdatingScanbackId(null));
+  };
+
+  const sendChatMessage = () => {
+    const body = chatDraft.trim();
+    if (!body || isChatSending) return;
+
+    const applySentMessage = (result: CommunicationSendResult) => {
+      setChatConversation((current) =>
+        current
+          ? { thread: result.thread, messages: mergeMessage(current.messages, result.message) }
+          : { thread: result.thread, messages: [result.message] },
+      );
+      setChatDraft("");
+    };
+
+    setIsChatSending(true);
+    const socket = chatSocketRef.current;
+    if (socket?.connected) {
+      socket.emit("communications:send-message", { orderNumber: id, body }, (ack: SocketAck<CommunicationSendResult>) => {
+        setIsChatSending(false);
+        if (!ack.success || !ack.data) {
+          showToast("Message Failed", { message: ack.message || "Unable to send chat message.", variant: "error" });
+          return;
+        }
+        applySentMessage(ack.data);
+      });
+      return;
+    }
+
+    communicationsApi
+      .sendOrderMessage(id, body)
+      .then(applySentMessage)
+      .catch((error) => {
+        showToast("Message Failed", {
+          message: error instanceof Error ? error.message : "Unable to send chat message.",
+          variant: "error",
+        });
+      })
+      .finally(() => setIsChatSending(false));
   };
 
   return (
@@ -458,6 +574,13 @@ export function OrderDetailsPage({
               ))}
             </div>
           </SectionCard>
+
+          <ActivityLog
+            title="Activity Log"
+            items={activityLogs}
+            footer="View Full Audit Trail"
+            onFooterClick={() => setShowAuditTrailModal(true)}
+          />
         </div>
 
         <div className="space-y-5">
@@ -584,12 +707,93 @@ export function OrderDetailsPage({
               </div>
             )}
           </SectionCard>
-          <ActivityLog
-            title="Activity Log"
-            items={activityLogs}
-            footer="View Full Audit Trail"
-            onFooterClick={() => setShowAuditTrailModal(true)}
-          />
+
+          <SectionCard className="overflow-hidden">
+            <div className="flex items-center justify-between border-b border-line bg-slate-50/50 px-4 py-4">
+              <div>
+                <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">Order Chat</div>
+                <div className="mt-1 text-[13px] font-medium text-slate-500">
+                  Direct admin conversation with the assigned notary.
+                </div>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <MessageCircle size={18} />
+              </div>
+            </div>
+
+            <div className="flex h-[430px] flex-col">
+              <div ref={chatMessagesRef} className="flex-1 space-y-3 overflow-y-auto bg-[#F8FAFD] px-4 py-4">
+                {isChatLoading ? (
+                  <div className="flex h-full items-center justify-center text-[13px] font-semibold text-slate-500">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading order chat...
+                  </div>
+                ) : chatConversation?.messages.length ? (
+                  chatConversation.messages.map((message) => {
+                    const mine = message.senderRole === "admin";
+                    return (
+                      <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[82%] rounded-2xl px-4 py-3 text-[13px] shadow-sm ${
+                            mine
+                              ? "rounded-br-md bg-brand-600 text-white"
+                              : "rounded-bl-md border border-slate-100 bg-white text-slate-800"
+                          }`}
+                        >
+                          <div className={`mb-1 text-[10px] font-bold uppercase tracking-[0.1em] ${mine ? "text-white/65" : "text-slate-400"}`}>
+                            {mine ? "Admin" : message.senderName}
+                          </div>
+                          <div className="whitespace-pre-wrap leading-5">{message.body}</div>
+                          <div className={`mt-1 text-[10px] font-semibold ${mine ? "text-white/65" : "text-slate-400"}`}>
+                            {message.time}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                      <MessageCircle size={22} />
+                    </div>
+                    <div className="text-[14px] font-bold text-slate-800">No messages yet</div>
+                    <div className="mt-1 text-[12px] leading-5 text-slate-500">
+                      Send a concise note to the notary about scanbacks, corrections, or closing coordination.
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-line bg-white p-3">
+                <div className="flex items-end gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                  <textarea
+                    value={chatDraft}
+                    onChange={(event) => setChatDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        sendChatMessage();
+                      }
+                    }}
+                    rows={1}
+                    maxLength={4000}
+                    placeholder={avatar === "none" ? "Assign a notary before sending..." : "Message the notary..."}
+                    disabled={avatar === "none"}
+                    className="max-h-24 min-h-[42px] flex-1 resize-none bg-transparent px-3 py-2.5 text-[13px] text-slate-800 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    type="button"
+                    onClick={sendChatMessage}
+                    disabled={!chatDraft.trim() || isChatSending || avatar === "none"}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    aria-label="Send chat message"
+                  >
+                    {isChatSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send size={16} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
         </div>
       </div>
 
