@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Link2, ShieldCheck } from "lucide-react";
+import { useRef, useState } from "react";
+import { Link2, ShieldCheck, Camera } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
 import { usersApi } from "../../api/users";
 import { firstPasswordVault } from "../../utils/firstPasswordVault";
+import { prepareAvatarDataUrl } from "../../utils/avatarImage";
 import type { CompanyUser } from "../../types";
+import { Avatar } from "../common";
 import {
   ModalHeader,
   ModalInput,
@@ -12,6 +14,7 @@ import {
   ToggleOptionCard,
   ModalActionFooter,
 } from "./Modal";
+import { profileGradients } from "../../data";
 
 export function AddCompanyUserModal({
   onClose,
@@ -28,6 +31,7 @@ export function AddCompanyUserModal({
 }) {
   const { setCompanies, setRegistrationRequests } = useAppContext();
   const isEdit = !!companyToEdit;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [form, setForm] = useState({
     companyName: companyToEdit?.companyName || prefillData?.companyName || "",
@@ -38,15 +42,38 @@ export function AddCompanyUserModal({
     contactEmail: companyToEdit?.contactEmail || prefillData?.contactEmail || "",
     userName: companyToEdit?.userName || prefillData?.userName || "",
     password: companyToEdit?.password || prefillData?.password || "",
+    avatarUrl: companyToEdit?.avatarUrl || prefillData?.avatarUrl || "",
     sendInvite: companyToEdit?.sendInvite || prefillData?.sendInvite || false,
     active: companyToEdit ? companyToEdit.status !== "Inactive" : true,
     verify: companyToEdit ? !!companyToEdit.verify : (prefillData ? true : false),
   });
   const [error, setError] = useState("");
   const nextStatus: CompanyUser["status"] = form.active ? "Active" : "Inactive";
+  const avatarInitials = (form.companyName || form.contactPerson || "CO")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   const updateField = (field: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const avatarUrl = await prepareAvatarDataUrl(file);
+      updateField("avatarUrl", avatarUrl);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to process the selected image.");
+    }
   };
 
   const handleSubmit = async () => {
@@ -72,6 +99,7 @@ export function AddCompanyUserModal({
       contactEmail: form.contactEmail,
       userName: form.userName,
       password: form.password,
+      avatarUrl: form.avatarUrl,
       sendInvite: form.sendInvite,
     };
 
@@ -248,6 +276,50 @@ export function AddCompanyUserModal({
             {error}
           </div>
         ) : null}
+
+        <div>
+          <ModalSectionTitle title="Company Profile Photo" />
+          <div className="mt-5 flex items-center gap-5 rounded-[20px] border border-[#E7EDF6] bg-[#F9FBFF] px-5 py-4">
+            <div className="relative">
+              <Avatar
+                className="h-[72px] w-[72px] rounded-[20px]"
+                gradient={profileGradients.alex}
+                src={form.avatarUrl}
+                alt={`${form.companyName || "Company"} avatar`}
+                initials={avatarInitials}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border border-white bg-brand-500 text-white shadow-[0_10px_18px_rgba(29,93,195,0.24)] transition hover:bg-brand-600"
+              >
+                <Camera size={14} />
+              </button>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-semibold text-slate-700">Upload company profile photo</div>
+              <div className="mt-1 text-[12px] text-slate-500">
+                This image is saved to the existing backend profile and will appear in company detail views.
+              </div>
+              {form.avatarUrl ? (
+                <button
+                  type="button"
+                  onClick={() => updateField("avatarUrl", "")}
+                  className="mt-3 text-[12px] font-semibold text-rose-600 transition hover:text-rose-700"
+                >
+                  Remove Photo
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </div>
       <ModalActionFooter onClose={onClose} onConfirm={handleSubmit} confirmLabel={isEdit ? "Save Changes" : "Create User"} />
     </div>

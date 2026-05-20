@@ -61,9 +61,13 @@ export function CompanyTable({
             <tr key={company.id} className="border-t border-line bg-white text-[14px]">
               <td className="px-5 py-6">
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg text-[12px] font-bold ${company.color}`}>
-                    {company.initials}
-                  </div>
+                  <Avatar
+                    className="h-8 w-8 rounded-lg"
+                    gradient={profileGradients.alex}
+                    src={company.avatarUrl}
+                    alt={`${company.companyName} avatar`}
+                    initials={company.initials}
+                  />
                   <div>
                     <div className="max-w-[130px] text-[14px] font-semibold leading-5 text-slate-800">{company.companyName}</div>
                     {company.publicId && (

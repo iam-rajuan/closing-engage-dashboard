@@ -1,18 +1,19 @@
 import { useAppContext } from "../context/AppContext";
 import { usersApi } from "../api/users";
 import {
-  PageHeader,
   GhostButton,
   SectionCard,
   StatusBadge,
   InfoBlock,
   SmallMetricCard,
   TableHeader,
+  Avatar,
 } from "../components/common";
 import { FileText, Mail, Link2, MapPin, ArrowLeft, ShieldCheck, KeyRound, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { StatusKey, CompanyUser } from "../types";
 import { firstPasswordVault } from "../utils/firstPasswordVault";
+import { profileGradients } from "../data";
 
 export function CompanyDetailsPage({
   company,
@@ -23,7 +24,7 @@ export function CompanyDetailsPage({
   onBack: () => void;
   onEdit: (company: CompanyUser) => void;
 }) {
-  const { setCompanies, showConfirm } = useAppContext();
+  const { setCompanies, showConfirm, orders } = useAppContext();
   const fallbackPassword = company ? firstPasswordVault.get(company.id) : null;
   const visiblePassword = company?.adminVisiblePassword
     ? {
@@ -33,6 +34,7 @@ export function CompanyDetailsPage({
       }
     : fallbackPassword;
   const [passwordCopied, setPasswordCopied] = useState(false);
+  const companyInitials = (company?.initials || company?.companyName.slice(0, 2) || "CO").toUpperCase();
 
   const handleDeactivate = () => {
     if (!company) return;
@@ -87,56 +89,44 @@ export function CompanyDetailsPage({
     );
   };
 
-  // Dynamic mock generation to be 100% backend and api ready
   const companyTeam = useMemo(() => {
     if (!company) return [];
-    if (company.companyName.toLowerCase().includes("northway")) {
-      return [
-        { initials: "SM", color: "bg-[#DCE7FF] text-[#4259B2]", name: "Sarah J. Miller", email: "sarah.m@northway.com", role: "Senior Escrow Officer" },
-        { initials: "MC", color: "bg-[#DFE6FF] text-[#5B6AAE]", name: "Marcus Chen", email: "m.chen@northway.com", role: "Director of Operations" },
-        { initials: "ER", color: "bg-[#FFE1D2] text-[#C87846]", name: "Elena Rodriguez", email: "elena.r@northway.com", role: "Founder" }
-      ];
-    }
     return [
       {
         initials: company.initials,
         color: company.color,
         name: company.contactPerson,
         email: company.contactEmail || company.businessEmail,
-        role: "Primary Contact / Admin"
+        role: "Primary Contact / Admin",
       },
-      {
-        initials: "JS",
-        color: "bg-[#DFE6FF] text-[#5B6AAE]",
-        name: "John Smith",
-        email: `j.smith@${company.businessEmail.split("@")[1] || "domain.com"}`,
-        role: "Escrow Agent"
-      }
     ];
   }, [company]);
 
   const companyOrders = useMemo(() => {
     if (!company) return [];
-    if (company.companyName.toLowerCase().includes("northway")) {
-      return [
-        { id: "#ORD-90212", status: "In Progress", date: "Mar 20, 2026" },
-        { id: "#ORD-90208", status: "Approved", date: "Mar 15, 2026" },
-        { id: "#ORD-88421", status: "Completed", date: "Feb 24, 2026" }
-      ];
-    }
-    return [
-      { id: "#ORD-77401", status: "Completed", date: "May 10, 2026" },
-      { id: "#ORD-77290", status: "Assigned", date: "May 08, 2026" }
-    ];
-  }, [company]);
+    return orders
+      .filter((order) => order[1] === company.companyName)
+      .map((order) => ({
+        id: order[0],
+        status: order[6],
+        date: order[5],
+      }))
+      .slice(0, 5);
+  }, [company, orders]);
 
   const stats = useMemo(() => {
     if (!company) return { total: "0", active: "0", completed: "0" };
-    if (company.companyName.toLowerCase().includes("northway")) {
-      return { total: "248", active: "12", completed: "236" };
-    }
-    return { total: "15", active: "2", completed: "13" };
-  }, [company]);
+    const companyOrderRows = orders.filter((order) => order[1] === company.companyName);
+    return {
+      total: String(companyOrderRows.length),
+      active: String(
+        companyOrderRows.filter((order) =>
+          ["Received", "Assigned", "In Progress", "Under Review", "Approved", "Pending Upload", "Submitted"].includes(order[6])
+        ).length
+      ),
+      completed: String(companyOrderRows.filter((order) => order[6] === "Completed").length),
+    };
+  }, [company, orders]);
 
   if (!company) {
     return (
@@ -218,8 +208,14 @@ export function CompanyDetailsPage({
           <div className="border-b border-line bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-6 py-5">
             <div className="flex items-start justify-between gap-5">
               <div className="flex items-start gap-4">
-                <div className="flex h-[54px] w-[54px] items-center justify-center rounded-[16px] bg-[#EAF2FF] text-brand-600 ring-1 ring-brand-100">
-                  <FileText size={23} />
+                <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[18px] bg-[#e8f0ff] p-1.5 ring-1 ring-[#d8e5fb]">
+                  <Avatar
+                    className="h-full w-full rounded-[14px]"
+                    gradient={profileGradients.alex}
+                    src={company.avatarUrl}
+                    alt={`${company.companyName} avatar`}
+                    initials={companyInitials}
+                  />
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -238,7 +234,7 @@ export function CompanyDetailsPage({
           </div>
           <div className="grid gap-5 px-6 py-6 md:grid-cols-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
-              <InfoBlock label="Primary Contact" lines={[company.contactPerson, "Senior Escrow Officer"]} strongFirst />
+              <InfoBlock label="Primary Contact" lines={[company.contactPerson, company.contactEmail || company.businessEmail]} strongFirst />
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
               <InfoBlock label="Contact Information" lines={[company.contactEmail || company.businessEmail, company.phone]} icons={[Mail, Link2]} />
@@ -325,22 +321,30 @@ export function CompanyDetailsPage({
               </tr>
             </thead>
             <tbody>
-              {companyTeam.map((member) => (
-                <tr key={member.email} className="border-t border-line text-[14px]">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold ${member.color}`}>
-                        {member.initials}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-slate-800">{member.name}</div>
-                        <div className="text-[13px] text-slate-500">{member.email}</div>
-                      </div>
-                    </div>
+              {companyTeam.length === 0 ? (
+                <tr className="border-t border-line text-[14px]">
+                  <td colSpan={2} className="px-6 py-8 text-center font-medium text-slate-500">
+                    No real company contact data is available yet.
                   </td>
-                  <td className="px-6 py-4 text-slate-600 font-semibold">{member.role}</td>
                 </tr>
-              ))}
+              ) : (
+                companyTeam.map((member) => (
+                  <tr key={member.email} className="border-t border-line text-[14px]">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold ${member.color}`}>
+                          {member.initials}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-800">{member.name}</div>
+                          <div className="text-[13px] text-slate-500">{member.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 font-semibold">{member.role}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </SectionCard>
@@ -355,15 +359,23 @@ export function CompanyDetailsPage({
               </tr>
             </thead>
             <tbody>
-              {companyOrders.map((order) => (
-                <tr key={order.id} className="border-t border-line text-[14px]">
-                  <td className="px-6 py-4 font-semibold text-brand-500">{order.id}</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={order.status as StatusKey} />
+              {companyOrders.length === 0 ? (
+                <tr className="border-t border-line text-[14px]">
+                  <td colSpan={3} className="px-6 py-8 text-center font-medium text-slate-500">
+                    No real orders are currently linked to this company.
                   </td>
-                  <td className="px-6 py-4 text-right text-slate-500 font-semibold">{order.date}</td>
                 </tr>
-              ))}
+              ) : (
+                companyOrders.map((order) => (
+                  <tr key={order.id} className="border-t border-line text-[14px]">
+                    <td className="px-6 py-4 font-semibold text-brand-500">{order.id}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={order.status as StatusKey} />
+                    </td>
+                    <td className="px-6 py-4 text-right text-slate-500 font-semibold">{order.date}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </SectionCard>
