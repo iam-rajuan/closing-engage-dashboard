@@ -230,11 +230,19 @@ export function OrderTable({
   onAssign: (id: string) => void;
   rows: any[];
 }) {
-  const { setOrders, showConfirm } = useAppContext();
+  const { setOrders, showConfirm, notaries } = useAppContext();
   const [currentPage, setCurrentPage] = useState(1);
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
   const pageSize = 10;
   const totalPages = Math.ceil(rows.length / pageSize) || 1;
+
+  const initialsFromName = (value: string) =>
+    value
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("");
 
   useEffect(() => {
     setCurrentPage(1);
@@ -280,100 +288,114 @@ export function OrderTable({
           </tr>
         </thead>
         <tbody>
-          {paginatedRows.map(([id, company, companyInitials, notary, location, date, status, avatar]) => (
-            <tr key={id} className="border-t border-line bg-white text-[14px]">
-              <td className="px-5 py-5">
-                <button
-                  onClick={() => onOpenOrder(id)}
-                  className="whitespace-pre-line text-left font-semibold leading-6 text-brand-500 focus:outline-none hover:text-brand-600 transition animate-hover"
-                >
-                  {id.replace("-", "-\n")}
-                </button>
-              </td>
-              <td className="px-5 py-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#E9EEF6] text-[12px] font-bold text-slate-500">
-                    {companyInitials}
-                  </div>
-                  <div className="max-w-[118px] whitespace-pre-line leading-5 text-slate-800">{company}</div>
-                </div>
-              </td>
-              <td className="px-5 py-5">
-                {avatar === "none" ? (
-                  <div className="text-[14px] italic text-slate-400">Unassigned</div>
-                ) : (
+          {paginatedRows.map(([id, company, companyInitials, notary, location, date, status, avatar]) => {
+            const isUnassigned = avatar === "none" || !notary || notary === "Unassigned";
+            const assignedNotary = isUnassigned
+              ? undefined
+              : notaries.find((entry) => entry.fullName.toLowerCase() === notary.toLowerCase());
+            const fallbackGradient = avatar === "jane" ? profileGradients.jane : profileGradients.mark;
+
+            return (
+              <tr key={id} className="border-t border-line bg-white text-[14px]">
+                <td className="px-5 py-5">
+                  <button
+                    onClick={() => onOpenOrder(id)}
+                    className="whitespace-pre-line text-left font-semibold leading-6 text-brand-500 focus:outline-none hover:text-brand-600 transition animate-hover"
+                  >
+                    {id.replace("-", "-\n")}
+                  </button>
+                </td>
+                <td className="px-5 py-5">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8" gradient={avatar === "jane" ? profileGradients.jane : profileGradients.mark} />
-                    <div className="whitespace-pre-line leading-5 text-slate-800">{notary}</div>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#E9EEF6] text-[12px] font-bold text-slate-500">
+                      {companyInitials}
+                    </div>
+                    <div className="max-w-[118px] whitespace-pre-line leading-5 text-slate-800">{company}</div>
                   </div>
-                )}
-              </td>
-              <td className="px-5 py-5 whitespace-pre-line leading-5 text-slate-850">{location}</td>
-              <td className="px-5 py-5 whitespace-pre-line leading-5 text-slate-500">{date}</td>
-              <td className="px-5 py-5">
-                <StatusBadge status={status as StatusKey} />
-              </td>
-              <td className="px-5 py-5">
-                <div className="flex items-center gap-4 text-slate-500">
-                  <button onClick={() => onOpenOrder(id)} className="hover:text-brand-500 focus:outline-none transition">
-                    <Eye size={16} />
-                  </button>
-                  <button onClick={() => onAssign(id)} className="hover:text-brand-500 focus:outline-none transition">
-                    <UserPlus size={16} />
-                  </button>
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveDropdownId(activeDropdownId === id ? null : id);
-                      }}
-                      className="hover:text-slate-700 focus:outline-none transition"
-                    >
-                      <MoreVertical size={16} />
+                </td>
+                <td className="px-5 py-5">
+                  {isUnassigned ? (
+                    <div className="text-[14px] italic text-slate-400">Unassigned</div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        className="h-8 w-8"
+                        gradient={fallbackGradient}
+                        src={assignedNotary?.avatarUrl}
+                        alt={`${notary} avatar`}
+                        initials={initialsFromName(notary)}
+                      />
+                      <div className="whitespace-pre-line leading-5 text-slate-800">{notary}</div>
+                    </div>
+                  )}
+                </td>
+                <td className="px-5 py-5 whitespace-pre-line leading-5 text-slate-850">{location}</td>
+                <td className="px-5 py-5 whitespace-pre-line leading-5 text-slate-500">{date}</td>
+                <td className="px-5 py-5">
+                  <StatusBadge status={status as StatusKey} />
+                </td>
+                <td className="px-5 py-5">
+                  <div className="flex items-center gap-4 text-slate-500">
+                    <button onClick={() => onOpenOrder(id)} className="hover:text-brand-500 focus:outline-none transition">
+                      <Eye size={16} />
                     </button>
-                    {activeDropdownId === id && (
-                      <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white py-1 shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenOrder(id);
-                            setActiveDropdownId(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition"
-                        >
-                          <Eye size={14} className="text-slate-400" />
-                          View Details
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAssign(id);
-                            setActiveDropdownId(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition"
-                        >
-                          <UserPlus size={14} className="text-slate-400" />
-                          Assign Notary
-                        </button>
-                        <hr className="my-1 border-slate-100" />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(id);
-                            setActiveDropdownId(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-semibold text-rose-600 hover:bg-rose-50 transition"
-                        >
-                          <Trash2 size={14} className="text-rose-500" />
-                          Delete Order
-                        </button>
-                      </div>
-                    )}
+                    <button onClick={() => onAssign(id)} className="hover:text-brand-500 focus:outline-none transition">
+                      <UserPlus size={16} />
+                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveDropdownId(activeDropdownId === id ? null : id);
+                        }}
+                        className="hover:text-slate-700 focus:outline-none transition"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                      {activeDropdownId === id && (
+                        <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white py-1 shadow-xl border border-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenOrder(id);
+                              setActiveDropdownId(null);
+                            }}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition"
+                          >
+                            <Eye size={14} className="text-slate-400" />
+                            View Details
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAssign(id);
+                              setActiveDropdownId(null);
+                            }}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition"
+                          >
+                            <UserPlus size={14} className="text-slate-400" />
+                            Assign Notary
+                          </button>
+                          <hr className="my-1 border-slate-100" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(id);
+                              setActiveDropdownId(null);
+                            }}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-semibold text-rose-600 hover:bg-rose-50 transition"
+                          >
+                            <Trash2 size={14} className="text-rose-500" />
+                            Delete Order
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </td>
-            </tr>
-          ))}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <Pagination

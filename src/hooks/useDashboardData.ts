@@ -11,6 +11,8 @@ import {
   type NotificationItem,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteNotification,
+  clearAllNotifications,
   toMetricCards,
   toQuickActions,
 } from "../api/dashboardService";
@@ -222,6 +224,22 @@ export function useDashboardData() {
     }));
   };
 
+  const handleDeleteNotification = async (id: string) => {
+    await deleteNotification(id);
+    updateSharedDashboardState((prev) => ({
+      ...prev,
+      notifications: prev.notifications.filter((n) => n.id !== id),
+    }));
+  };
+
+  const handleClearAllNotifications = async () => {
+    await clearAllNotifications();
+    updateSharedDashboardState((prev) => ({
+      ...prev,
+      notifications: [],
+    }));
+  };
+
   const unreadCount = state.notifications.filter((n) => !n.read).length;
 
   return {
@@ -235,6 +253,8 @@ export function useDashboardData() {
     unreadCount,
     markRead: handleMarkRead,
     markAllRead: handleMarkAllRead,
+    removeNotification: handleDeleteNotification,
+    clearNotifications: handleClearAllNotifications,
     refetch: fetchAll,
   };
 }

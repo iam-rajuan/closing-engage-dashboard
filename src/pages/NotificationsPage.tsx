@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Bell, ClipboardList, FileText, ShieldCheck } from "lucide-react";
+import { Bell, ClipboardList, FileText, ShieldCheck, X } from "lucide-react";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useToast } from "../components/Toast";
 import { GhostButton, PrimaryButton, SectionCard } from "../components/common";
 
 export function NotificationsPage() {
-  const { notifications, markRead, markAllRead, refetch } = useDashboardData();
+  const { notifications, markRead, markAllRead, removeNotification, clearNotifications, refetch } = useDashboardData();
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const { showToast } = useToast();
 
@@ -17,6 +17,16 @@ export function NotificationsPage() {
   const handleMarkAllRead = async () => {
     await markAllRead();
     showToast("All notifications marked as read", { variant: "success" });
+  };
+
+  const handleRemoveNotification = async (id: string) => {
+    await removeNotification(id);
+    showToast("Notification cleared", { variant: "success" });
+  };
+
+  const handleClearAllNotifications = async () => {
+    await clearNotifications();
+    showToast("All notifications cleared", { variant: "success" });
   };
 
   const filteredNotifs = notifications.filter((n) => {
@@ -42,6 +52,11 @@ export function NotificationsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {notifications.length > 0 && (
+            <GhostButton onClick={handleClearAllNotifications} className="px-4 py-2.5">
+              Clear all
+            </GhostButton>
+          )}
           {notifications.some((n) => !n.read) && (
             <GhostButton onClick={handleMarkAllRead} className="px-4 py-2.5">
               Mark all read
@@ -98,14 +113,24 @@ export function NotificationsPage() {
                   </div>
                 </div>
 
-                {!n.read && (
-                  <GhostButton
-                    onClick={() => handleMarkRead(n.id)}
-                    className="shrink-0 px-3 py-1.5 text-[11px] font-bold text-brand-500 hover:bg-brand-50 border-brand-500/20"
+                <div className="ml-4 flex shrink-0 items-center gap-2">
+                  {!n.read && (
+                    <GhostButton
+                      onClick={() => handleMarkRead(n.id)}
+                      className="px-3 py-1.5 text-[11px] font-bold text-brand-500 hover:bg-brand-50 border-brand-500/20"
+                    >
+                      Mark read
+                    </GhostButton>
+                  )}
+                  <button
+                    onClick={() => handleRemoveNotification(n.id)}
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none"
+                    aria-label={`Clear ${n.title}`}
+                    title="Clear notification"
                   >
-                    Mark read
-                  </GhostButton>
-                )}
+                    <X size={15} />
+                  </button>
+                </div>
               </div>
             ))
           ) : (

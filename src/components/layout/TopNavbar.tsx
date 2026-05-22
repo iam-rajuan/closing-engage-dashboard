@@ -34,7 +34,7 @@ export function TopNavbar({
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const { notifications, unreadCount, markRead, markAllRead } = useDashboardData();
+  const { notifications, unreadCount, markRead, markAllRead, removeNotification, clearNotifications } = useDashboardData();
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -154,32 +154,60 @@ export function TopNavbar({
               <div className="notification-dropdown absolute right-0 top-full z-50 mt-2 w-[380px] overflow-hidden rounded-2xl border border-[#e2e8f3] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.15)] animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between border-b border-line px-5 py-4">
                   <h3 className="text-[15px] font-semibold text-slate-800">Notifications</h3>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllRead}
-                      className="text-[12px] font-semibold text-brand-500 hover:text-brand-600 focus:outline-none transition"
-                    >
-                      Mark all read
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={clearNotifications}
+                        className="text-[12px] font-semibold text-slate-500 hover:text-slate-700 focus:outline-none transition"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllRead}
+                        className="text-[12px] font-semibold text-brand-500 hover:text-brand-600 focus:outline-none transition"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-50">
-                  {notifications.map((n) => (
-                    <button
-                      key={n.id}
-                      onClick={() => markRead(n.id)}
-                      className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition hover:bg-[#f8fafd] focus:outline-none ${
-                        !n.read ? "bg-[#f5f9ff]/40" : ""
-                      }`}
-                    >
-                      <div className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${!n.read ? "bg-brand-500" : "bg-transparent"}`} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[13px] font-semibold text-slate-800">{n.title}</div>
-                        <div className="mt-0.5 text-[12px] leading-5 text-slate-500">{n.message}</div>
-                        <div className="mt-1 text-[11px] text-slate-400 font-medium">{n.time}</div>
+                  {notifications.length ? (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`flex items-start gap-3 px-5 py-3.5 transition hover:bg-[#f8fafd] ${
+                          !n.read ? "bg-[#f5f9ff]/40" : ""
+                        }`}
+                      >
+                        <button
+                          onClick={() => markRead(n.id)}
+                          className="flex min-w-0 flex-1 items-start gap-3 text-left focus:outline-none"
+                        >
+                          <div className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${!n.read ? "bg-brand-500" : "bg-transparent"}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[13px] font-semibold text-slate-800">{n.title}</div>
+                            <div className="mt-0.5 text-[12px] leading-5 text-slate-500">{n.message}</div>
+                            <div className="mt-1 text-[11px] text-slate-400 font-medium">{n.time}</div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => removeNotification(n.id)}
+                          className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-white hover:text-slate-600 focus:outline-none transition"
+                          aria-label={`Clear ${n.title}`}
+                          title="Clear notification"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
-                    </button>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="px-5 py-10 text-center text-[13px] font-medium text-slate-400">
+                      No notifications right now.
+                    </div>
+                  )}
                 </div>
                 <div className="border-t border-line px-5 py-3 text-center bg-slate-50/55">
                   <button

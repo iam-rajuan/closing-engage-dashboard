@@ -264,6 +264,14 @@ export async function markAllNotificationsRead(): Promise<void> {
   await request<Record<string, never>>("/notifications/read-all", { method: "PATCH" });
 }
 
+export async function deleteNotification(id: string): Promise<void> {
+  await request<Record<string, never>>(`/notifications/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function clearAllNotifications(): Promise<void> {
+  await request<Record<string, never>>("/notifications/clear-all", { method: "DELETE" });
+}
+
 export const toMetricCards = (overview: DashboardOverview): MetricCard[] => [
   {
     title: "Total Title Companies",
